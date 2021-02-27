@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" type="text/css" href="jsoneditor.min.css">
+    <link rel="stylesheet" type="text/css" href="json_editor.css">
+    <script type="text/javascript" src="jquery.min.js"></script>
+    <script type="text/javascript" src="jsoneditor.min.js"></script>
+    <meta name="theme-color" content="#000000">
+    <title>Parameter Server</title>
+  </head>
+  <body>
+    <div class="content">
+      <img src="logo.png" style="float:right; height: 70px; border-radius: 2px;">
+      <h1>ZHIZUO SDK Parameter Server</h1>
+  
+      <p>
+        For C5 2Ks Parameter Debug.
+      </p>
+      
+      <fieldset>
+        <legend>Device settings</legend>
+        <div>
+          <button id="sync_btn" width=200>Sync Settings</button>
+          <button id="save_btn" width=200>Save Settings</button>
+        </div>
+        <div id="jsoneditor" style="width: 820px; height: 1000px;"></div>
+        <script>
+            setInterval(function() {
+              $.ajax({
+                url: '/get_dev_status',
+                dataType: 'json',
+                success: function(json) {
+                  $('#dev_status').empty();
+                  for (var key in json) {
+                    var Div = document.createElement('div');
+                    var str = "<label>" + key+':'+json[key] + "</label>";
+                    Div.innerHTML = str;
+                    $('#dev_status').append(Div);
+                  }
+                }
+              });
+            }, 1000);
+
+            // create the editor
+            const container = document.getElementById("jsoneditor")
+            const options = {
+              modes: ['form', 'tree', 'view', 'code', 'text'],
+              name: "root",
+              onChangeJSON: function(json) {
+                // $.ajax({
+                //   url: '/set_dev_ctrl',
+                //   data: { code_res: encodeURIComponent(JSON.stringify(editor.get()))},
+                //   dataType: 'json',
+                //   success: function(json_in) {
+                //       json_dev_ctrl = json_in;
+                //   },
+                //   complete: function(a, status) {
+                //     console.log(status);
+                //     if (status == "success") {
+                //       // todo
+                //     } else {
+                //       editor.set(json_dev_ctrl);
+                //     }
+                //   }
+                // });
+              }
+            }
+            const editor = new JSONEditor(container, options)
+            
+            $.ajax({
+              url: '/get_dev_ctrl',
+              dataType: 'json',
+                success: function(json_in) {
+                    editor.set(json_in);
+                }
+            });
+
+            $("#sync_btn").click(function(){
+              $.ajax({
+                url: '/get_dev_ctrl',
+                dataType: 'json',
+                  success: function(json_in) {
+                      json_dev_ctrl = json_in;
+                      editor.set(json_in);
+                  }
+              });
+            })
+
+            $("#save_btn").click(function(){
+              $.ajax({
+                url: '/set_dev_ctrl',
+                data: { code_res: encodeURIComponent(JSON.stringify(editor.get()))},
+                dataType: 'json',
+                success: function(json_in) {
+                    json_dev_ctrl = json_in;
+                },
+                complete: function(a, status) {
+                  console.log(status);
+                  if (status == "success") {
+                    // todo
+                  } else {
+                    editor.set(json_dev_ctrl);
+                  }
+                }
+              });
+            })
+        </script>
+      </fieldset>
+      <fieldset>
+        <legend>Device status</legend>
+          <div id="dev_status"></div>
+      </div>
+    </fieldset>
+  </body></html>

@@ -1,0 +1,25 @@
+setInterval(function() {
+              $.ajax({
+                url: '/set_dev_ctrl',
+                data: { code_res: encodeURIComponent(JSON.stringify(
+
+
+{"UltrasoundTissueDataRenderer25350070": {"probe": "lined", "enable": true}}
+
+
+
+                ))},
+                dataType: 'json',
+                success: function(json_in) {
+                    json_dev_ctrl = json_in;
+                },
+                complete: function(a, status) {
+                  console.log(status);
+                  if (status == "success") {
+                    // todo
+                  } else {
+                    editor.set(json_dev_ctrl);
+                  }
+                }
+              });
+            }, 1000);
