@@ -43,14 +43,14 @@ public:
         Synchronized g(*mutex);
         cond.notify_one();
     }
-    void notify(Synchronized &s){
+    void notify(Synchronized &){
         cond.notify_one();
     }
     void notifyAll(){
         Synchronized g(*mutex);
         cond.notify_all();
     }
-    void notifyAll(Synchronized &s){
+    void notifyAll(Synchronized &){
         cond.notify_all();
     }
 };

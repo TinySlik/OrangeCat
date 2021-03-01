@@ -28,8 +28,10 @@
 *.x86_64
 *.hex
 
+.vscode
 # build files
 build/
 _builds/
+_output/
 cmake-build-debug/
 .DS_Store

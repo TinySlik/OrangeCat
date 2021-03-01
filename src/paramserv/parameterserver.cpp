@@ -1,17 +1,20 @@
 #include "parameterserver.h"
 #include "mongoose.h"
 #include "urldecode.h"
-
+#define ELPP_THREAD_SAFE
+#define ELPP_FORCE_USE_STD_THREAD
+#include "easylogging++.h"
 #include <iostream>
 
 #define CONFIGURU_IMPLEMENTATION 1
-#define TARGET_WEB_DIR_NAME "/home/tinyoh/develop/to_cvpipeline/res/web_root"
+#define TARGET_WEB_DIR_NAME "./web_root"
 #define CONFIGURU_JSON_PARSE_ERROR_LOG ""
 #define CACHE_MAX_SIZE (128*1024)
 #define STATUS_DISPLAY_TIME_INTERVAL 1000
 #define DEBUG_PARAM_SERV
 #define CONFIG_HIDEN_PARAM
 #define WITH_HTTP_PAGE
+INITIALIZE_EASYLOGGINGPP
 
 #include "configuru.hpp"
 using namespace configuru;
@@ -139,8 +142,7 @@ static void handle_set_dev_ctrl(struct mg_connection *nc,struct http_message *hm
 
     if (!(custom_head && end))
     {
-        std::cout << __FUNCTION__ << "error";
-        std::cout.flush();
+        LOG(ERROR) << __FUNCTION__ << "error";
         free(res);
         mg_http_send_error(nc, 403, NULL);
         return;
@@ -157,8 +159,11 @@ static void handle_set_dev_ctrl(struct mg_connection *nc,struct http_message *hm
     if (Config::deep_async(dev_ctrl, config_in))
     {
 #ifdef DEBUG_PARAM_SERV
-        std::cout << std::endl << "Nothing in config changed." << std::endl;
-        std::cout.flush();
+        LOG(INFO) << "Nothing in config changed." << std::endl;
+#endif
+    } else {
+#ifdef DEBUG_PARAM_SERV
+        LOG(INFO) << dev_ctrl << std::endl;
 #endif
     }
 #ifdef CONFIG_HIDEN_PARAM
@@ -261,8 +266,7 @@ public:
         if (nc == NULL)
         {
 #ifdef DEBUG_PARAM_SERV
-            std::cout << __FUNCTION__ << "Cannot bind to %s\n" << s_http_port << std::endl;
-            std::cout.flush();
+            LOG(ERROR) << "Cannot bind to %s\n" << s_http_port << std::endl;
 #endif
             exit(1);
         }
@@ -273,8 +277,7 @@ public:
         if (mg_stat(s_http_server_opts.document_root, &st) != 0)
         {
 #ifdef DEBUG_PARAM_SERV
-            std::cout << __FUNCTION__ << "Cannot find web_root directory, continue without params server.\n" << std::endl;
-            std::cout.flush();
+            LOG(ERROR) << "Cannot find web_root directory, continue without params server.\n" << std::endl;
 #endif
             while (requestedState!=STOP) {
                 // waiting for close;
@@ -283,8 +286,7 @@ public:
             return;
         }
 #ifdef DEBUG_PARAM_SERV
-        std::cout << __FUNCTION__ << "Starting web server on port " << s_http_port << std::endl;
-        std::cout.flush();
+        LOG(INFO) << "Starting web server on port " << s_http_port << std::endl;
 #endif
         while (requestedState!=STOP) {
             mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
