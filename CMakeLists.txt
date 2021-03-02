@@ -68,7 +68,7 @@ include(CMakePackageConfigHelpers)
 set(ORANGECAT ${PROJECT_NAME})
 
 set(ORANGECAT_SPACE "orangecat")
-message(STATUS "Namespace: ${TO_PIPELINESPACE}")
+message(STATUS "Namespace: ${ORANGECAT_SPACE}")
 
 if(MSVC)
   string(REPLACE "/" "\\\\" ORANGECAT_SDK_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -157,6 +157,20 @@ set(ORANGECAT_CMAKE_INSTALLDIR "${ORANGECAT_CMAKE_LIBDIR}/cmake/${TO_PIPELINE}")
 # )
 
 add_subdirectory(src)
+set(RES_DIR_OUTPUT ${OUT_DIR}/res)
+set(RES_DIR ${PROJECT_SOURCE_DIR}/res)
+add_custom_command(OUTPUT  ${RES_DIR_OUTPUT}
+  COMMAND echo "Generating res dir"
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${RES_DIR}  ${RES_DIR_OUTPUT}
+  COMMENT  "res file copy"
+ )
+add_custom_target(res ALL DEPENDS ${RES_DIR_OUTPUT})
+
+
+add_custom_command(TARGET res
+  POST_BUILD 
+  COMMAND echo "executing a res command"
+ )
 
 ## build.info
 

@@ -7,7 +7,7 @@
 #include <iostream>
 
 #define CONFIGURU_IMPLEMENTATION 1
-#define TARGET_WEB_DIR_NAME "./web_root"
+#define TARGET_WEB_DIR_NAME "../res/web_root"
 #define CONFIGURU_JSON_PARSE_ERROR_LOG ""
 #define CACHE_MAX_SIZE (128*1024)
 #define STATUS_DISPLAY_TIME_INTERVAL 1000
