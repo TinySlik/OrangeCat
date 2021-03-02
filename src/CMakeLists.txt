@@ -7,7 +7,7 @@ set(SOURCE_FILES ${PROJECT_SOURCE_DIR}/samples/paramserv.cpp)
 
 include_directories(log)
 include_directories(paramserv)
-
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-expansion-to-defined -Wno-deprecated-declarations" )
 add_executable(paramserv_example ${SOURCE_FILES})
 target_link_libraries(paramserv_example paramserv)
 install(TARGETS paramserv_example DESTINATION ${ORANGECAT_CMAKE_INSTALLDIR})
