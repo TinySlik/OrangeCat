@@ -30,6 +30,7 @@
 
 .vscode
 # build files
+logs/
 build/
 _builds/
 _output/
