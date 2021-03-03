@@ -105,75 +105,71 @@ static char cache[CACHE_MAX_SIZE];
 *exp ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-static void handle_get_device_usage(struct mg_connection *nc)
-{
-    // Use chunked encoding in order to avoid calculating Content-Length
-    mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
+static void handle_get_device_usage(struct mg_connection *nc) {
+  // Use chunked encoding in order to avoid calculating Content-Length
+  mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
 
-    auto cfg = ParameterServer::instance()->GetCfgRoot();
-    uint64_t mem = 0, vmem = 0, r = 0, w = 0;
+  auto cfg = ParameterServer::instance()->GetCfgRoot();
+  uint64_t mem = 0, vmem = 0, r = 0, w = 0;
 
-    //  cpu = get_cpu_usage();
-    //  get_memory_usage(&mem, &vmem);
-    //  get_io_bytes(&r, &w);
+  //  cpu = get_cpu_usage();
+  //  get_memory_usage(&mem, &vmem);
+  //  get_io_bytes(&r, &w);
 
-    if (cfg.has_key("dev_status") && cfg["dev_status"].is_object())
-    {
-    } else {
-        cfg["dev_status"]= Config::object();
-    }
-    auto dev_status = cfg["dev_status"];
-    dev_status["mem"] = mem;
-    dev_status["vmem"] = vmem;
-    dev_status["io_r"] = r;
-    dev_status["io_w"] = w;
+  if (cfg.has_key("dev_status") &&
+      cfg["dev_status"].is_object()) {
+  } else {
+    cfg["dev_status"]= Config::object();
+  }
+  auto dev_status = cfg["dev_status"];
+  dev_status["mem"] = mem;
+  dev_status["vmem"] = vmem;
+  dev_status["io_r"] = r;
+  dev_status["io_w"] = w;
 
-    mg_printf_http_chunk(nc, dump_string(dev_status, JSON).c_str());
+  mg_printf_http_chunk(nc, dump_string(dev_status, JSON).c_str());
 
-    // Send empty chunk, the end of response
-    mg_send_http_chunk(nc, "", 0);
+  // Send empty chunk, the end of response
+  mg_send_http_chunk(nc, "", 0);
 }
 
 static void handle_set_dev_ctrl(struct mg_connection *nc,struct http_message *hm) {
-    // Use chunked encoding in order to avoid calculating Content-Length
-    char * res = urlDecode(hm->message.p);
-    char *custom_head = strstr(res, "code_res=");
-    char *end =  strstr(res, "HTTP/1.1");
+  // Use chunked encoding in order to avoid calculating Content-Length
+  char * res = urlDecode(hm->message.p);
+  char *custom_head = strstr(res, "code_res=");
+  char *end =  strstr(res, "HTTP/1.1");
 
-    if (!(custom_head && end))
-    {
-        LOG(ERROR) << __FUNCTION__ << "error";
-        free(res);
-        mg_http_send_error(nc, 403, NULL);
-        return;
-    }
-
-    memset(cache, 0, CACHE_MAX_SIZE);
-    memcpy(cache, custom_head + 9,end - custom_head - 9);
+  if (!(custom_head && end)) {
+    LOG(ERROR) << __FUNCTION__ << "error";
     free(res);
+    mg_http_send_error(nc, 403, NULL);
+    return;
+  }
 
-    auto config_in = parse_string(cache, JSON, CONFIGURU_JSON_PARSE_ERROR_LOG);
-    auto dev_ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
+  memset(cache, 0, CACHE_MAX_SIZE);
+  memcpy(cache, custom_head + 9,end - custom_head - 9);
+  free(res);
 
-    mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
-    if (Config::deep_async(dev_ctrl, config_in))
-    {
+  auto config_in = parse_string(cache, JSON, CONFIGURU_JSON_PARSE_ERROR_LOG);
+  auto dev_ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
+
+  mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
+  if (Config::deep_async(dev_ctrl, config_in)) {
 #ifdef DEBUG_PARAM_SERV
-        LOG(INFO) << "Nothing in config changed." << std::endl;
+    LOG(INFO) << "Nothing in config changed." << std::endl;
 #endif
-    }
+  }
 #ifdef CONFIG_HIDEN_PARAM
-    mg_printf_http_chunk(nc, dump_string_with_hiden(dev_ctrl, JSON).c_str());
+  mg_printf_http_chunk(nc, dump_string_with_hiden(dev_ctrl, JSON).c_str());
 #else
-    mg_printf_http_chunk(nc, dump_string(dev_ctrl, JSON).c_str());
+  mg_printf_http_chunk(nc, dump_string(dev_ctrl, JSON).c_str());
 #endif
 
-    // Send empty chunk, the end of response
-    mg_send_http_chunk(nc, "", 0);
+  // Send empty chunk, the end of response
+  mg_send_http_chunk(nc, "", 0);
 }
 
-static void handle_get_dev_ctrl(struct mg_connection *nc)
-{
+static void handle_get_dev_ctrl(struct mg_connection *nc) {
     // Use chunked encoding in order to avoid calculating Content-Length
     mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
 
@@ -189,141 +185,131 @@ static void handle_get_dev_ctrl(struct mg_connection *nc)
 }
 
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
-    struct http_message *hm = (struct http_message *) ev_data;
-    switch (ev) {
-      case MG_EV_HTTP_REQUEST:
-        if (mg_vcmp(&hm->uri, "/get_dev_status") == 0) {
-            handle_get_device_usage(nc);
-        } else if (mg_vcmp(&hm->uri, "/get_dev_ctrl") == 0) {
-            handle_get_dev_ctrl(nc);
-        } else if (mg_vcmp(&hm->uri, "/set_dev_ctrl") == 0) {
-            handle_set_dev_ctrl(nc, hm);
-        } else {
-            mg_serve_http(nc, hm, s_http_server_opts);  // Serve static content
-        }
-        break;
-      default:
-        break;
-    }
+  struct http_message *hm = (struct http_message *) ev_data;
+  switch (ev) {
+    case MG_EV_HTTP_REQUEST:
+      if (mg_vcmp(&hm->uri, "/get_dev_status") == 0) {
+        handle_get_device_usage(nc);
+      } else if (mg_vcmp(&hm->uri, "/get_dev_ctrl") == 0) {
+        handle_get_dev_ctrl(nc);
+      } else if (mg_vcmp(&hm->uri, "/set_dev_ctrl") == 0) {
+        handle_set_dev_ctrl(nc, hm);
+      } else {
+        mg_serve_http(nc, hm, s_http_server_opts);  // Serve static content
+      }
+      break;
+    default:
+      break;
+  }
 }
 
-typedef enum
-{
+typedef enum {
     INIT,
     RUNNING,
     STOP
 } ThreadState;
 
-class ServerThread : public Runnable
-{
+class ServerThread : public Runnable {
 private:
-    std::mutex mmutex;
-    Condition *condition;
-    ThreadState requestedState=INIT;
-    ThreadState currentState=INIT;
-    int id;
+  std::mutex mmutex;
+  Condition *condition;
+  ThreadState requestedState=INIT;
+  ThreadState currentState=INIT;
+  int id;
 
 public:
-    ServerThread(int id){
-        this->id=id;
-        condition=new Condition(mmutex);
-    }
-    ~ServerThread(){
-        delete condition;
-    }
-    int getId(){
-        return id;
-    }
-    void setState(ThreadState nState){
-        {
-        Synchronized x(mmutex);
-        requestedState=nState;
-        condition->notifyAll(x);
-        }
-    };
-    ThreadState getState(){
-        Synchronized x(mmutex);
-        return currentState;
-    };
-
-    virtual void run()
+  ServerThread(int id) {
+    this->id=id;
+    condition=new Condition(mmutex);
+  }
+  ~ServerThread() {
+    delete condition;
+  }
+  int getId() {
+    return id;
+  }
+  void setState(ThreadState nState) {
     {
-        {
-            Synchronized x(mmutex);
-            currentState=RUNNING;
-        }
+    Synchronized x(mmutex);
+    requestedState=nState;
+    condition->notifyAll(x);
+    }
+  };
+  ThreadState getState() {
+      Synchronized x(mmutex);
+      return currentState;
+  };
+
+  virtual void run() {
+    {
+      Synchronized x(mmutex);
+      currentState=RUNNING;
+    }
 #ifdef WITH_HTTP_PAGE
-        struct mg_mgr mgr;
-        struct mg_connection *nc;
-        cs_stat_t st;
+    struct mg_mgr mgr;
+    struct mg_connection *nc;
+    cs_stat_t st;
 
-        mg_mgr_init(&mgr, NULL);
-        nc = mg_bind(&mgr, s_http_port, ev_handler);
-        if (nc == NULL)
-        {
+    mg_mgr_init(&mgr, NULL);
+    nc = mg_bind(&mgr, s_http_port, ev_handler);
+    if (nc == NULL) {
 #ifdef DEBUG_PARAM_SERV
-            LOG(ERROR) << "Cannot bind to %s\n" << s_http_port << std::endl;
+      LOG(ERROR) << "Cannot bind to %s\n" << s_http_port << std::endl;
 #endif
-            exit(1);
-        }
-
-        mg_set_protocol_http_websocket(nc);
-        s_http_server_opts.document_root = TARGET_WEB_DIR_NAME;
-
-        if (mg_stat(s_http_server_opts.document_root, &st) != 0)
-        {
-#ifdef DEBUG_PARAM_SERV
-            LOG(ERROR) << "Cannot find web_root directory, continue without params server.\n" << std::endl;
-#endif
-            while (requestedState!=STOP) {
-                // waiting for close;
-                sleep(1);
-            }
-            return;
-        }
-#ifdef DEBUG_PARAM_SERV
-        LOG(INFO) << "Starting web server on port " << s_http_port << std::endl;
-#endif
-        while (requestedState!=STOP) {
-            mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
-        }
-        currentState=STOP;
-        mg_mgr_free(&mgr);
-        return;
-#endif
+      exit(1);
     }
 
-    virtual void stop()
-    {
-        requestedState=STOP;
-        currentState=STOP;
+    mg_set_protocol_http_websocket(nc);
+    s_http_server_opts.document_root = TARGET_WEB_DIR_NAME;
+
+    if (mg_stat(s_http_server_opts.document_root, &st) != 0) {
+#ifdef DEBUG_PARAM_SERV
+      LOG(ERROR) << "Cannot find web_root directory, continue without params server.\n" << std::endl;
+#endif
+      while (requestedState!=STOP) {
+        // waiting for close;
+        sleep(1);
+      }
+      return;
     }
+#ifdef DEBUG_PARAM_SERV
+    LOG(INFO) << "Starting web server on port " << s_http_port << std::endl;
+#endif
+    while (requestedState!=STOP) {
+      mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
+    }
+    currentState=STOP;
+    mg_mgr_free(&mgr);
+    return;
+#endif
+  }
+
+  virtual void stop() {
+    requestedState=STOP;
+    currentState=STOP;
+  }
 };
 
 ParameterServer::ParameterServer() :
 m_ServerThreadContext(nullptr),
-m_ServerThread(nullptr)
-{
-    m_ServerThreadContext = std::make_shared<ServerThread>(0);
-    m_ServerThread = std::make_shared<Thread>(m_ServerThreadContext);
+m_ServerThread(nullptr) {
+  m_ServerThreadContext = std::make_shared<ServerThread>(0);
+  m_ServerThread = std::make_shared<Thread>(m_ServerThreadContext);
 #ifdef WITH_HTTP_PAGE
-    debug_ = true;
+  debug_ = true;
 #else
-    debug_ = false;
+  debug_ = false;
 #endif
 }
 
-void ParameterServer::stop_server()
-{
-    m_ServerThreadContext->stop();
+void ParameterServer::stop_server() {
+  m_ServerThreadContext->stop();
 }
 
-void ParameterServer::start_server()
-{
-    m_ServerThread->start();
+void ParameterServer::start_server() {
+  m_ServerThread->start();
 }
 
-void ParameterServer::init()
-{
-    _cfgRoot = Config::object();
+void ParameterServer::init() {
+  _cfgRoot = Config::object();
 }
