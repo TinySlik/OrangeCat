@@ -117,7 +117,7 @@ static void handle_get_device_usage(struct mg_connection *nc) {
   //  get_io_bytes(&r, &w);
 
   if (cfg.has_key("dev_status") &&
-      cfg["dev_status"].is_object()) {
+    cfg["dev_status"].is_object()) {
   } else {
     cfg["dev_status"]= Config::object();
   }
@@ -170,18 +170,18 @@ static void handle_set_dev_ctrl(struct mg_connection *nc,struct http_message *hm
 }
 
 static void handle_get_dev_ctrl(struct mg_connection *nc) {
-    // Use chunked encoding in order to avoid calculating Content-Length
-    mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
+  // Use chunked encoding in order to avoid calculating Content-Length
+  mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
 
-    auto dev_ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
+  auto dev_ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
 #ifdef CONFIG_HIDEN_PARAM
-    mg_printf_http_chunk(nc, dump_string_with_hiden(dev_ctrl, JSON).c_str());
+  mg_printf_http_chunk(nc, dump_string_with_hiden(dev_ctrl, JSON).c_str());
 #else
-    mg_printf_http_chunk(nc, dump_string(dev_ctrl, JSON).c_str());
+  mg_printf_http_chunk(nc, dump_string(dev_ctrl, JSON).c_str());
 #endif
 
-    // Send empty chunk, the end of response
-    mg_send_http_chunk(nc, "", 0);
+  // Send empty chunk, the end of response
+  mg_send_http_chunk(nc, "", 0);
 }
 
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
@@ -236,8 +236,8 @@ public:
     }
   };
   ThreadState getState() {
-      Synchronized x(mmutex);
-      return currentState;
+    Synchronized x(mmutex);
+    return currentState;
   };
 
   virtual void run() {
