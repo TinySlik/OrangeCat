@@ -30,11 +30,9 @@ class ParameterServer {
     _cfgRoot.judge_or_create_key("dev_ctrl");
     return _cfgRoot["dev_ctrl"];
   }
-  static ParameterServer *instance()
-  {
+  static ParameterServer *instance() {
     static ParameterServer *_this = nullptr;
-    if (_this == nullptr)
-    {
+    if (_this == nullptr) {
       _this = new ParameterServer;
       _this->init();
       _this->start_server();
