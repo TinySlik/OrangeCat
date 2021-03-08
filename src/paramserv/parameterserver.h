@@ -10,6 +10,12 @@
 #include <functional>
 #include <atomic>
 #include <iostream>
+#define MAX_ROOT_NODE_COUNT (256)
+
+typedef  struct config_root {
+  std::string name;
+  configuru::Config config;
+} CFG_ROOT;
 
 class ParameterServer {
  private:
@@ -21,8 +27,17 @@ class ParameterServer {
   std::shared_ptr<Runnable> m_ServerThreadContext;
   std::shared_ptr<Thread> m_ServerThread;
   configuru::Config _cfgRoot;
+  std::vector<CFG_ROOT> _root_nodes;
+  configuru::Config _null;
+  size_t _index;
 
  public:
+  bool CreateNewRoot(const std::string &name,
+      configuru::Config &&config = configuru::Config::object());
+  configuru::Config &GetRoot(const std::string &name) ;
+  bool RemoveRoot(const std::string &name) ;
+  bool SetCurrentRoot(const std::string &name);
+  bool SetCurrentRoot(size_t index = 0);
   inline configuru::Config &GetCfgRoot() {
     return _cfgRoot;
   }

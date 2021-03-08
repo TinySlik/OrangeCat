@@ -105,6 +105,56 @@ static char cache[CACHE_MAX_SIZE];
 *exp ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
+bool ParameterServer::CreateNewRoot(const std::string &name, configuru::Config &&config) {
+  if (_root_nodes.size() > MAX_ROOT_NODE_COUNT)
+        return false;
+  for (size_t i = 0; i < _root_nodes.size(); i++) {
+    if (name == _root_nodes[i].name) {
+      LOG(WARNING) << "Duplicate name index.";
+      return false;
+    }
+  }
+  _root_nodes.push_back({name, config});
+  return true;
+}
+
+bool ParameterServer::RemoveRoot(const std::string &name) {
+  for (size_t i = 0; i < _root_nodes.size(); i++) {
+    if (name == _root_nodes[i].name) {
+      LOG(INFO) << "remove root node: " << name;
+      _root_nodes.erase(_root_nodes.begin() + i);
+      return true;
+    }
+  }
+  return false;
+}
+
+configuru::Config &ParameterServer::GetRoot(const std::string &name) {
+  for (size_t i = 0; i < _root_nodes.size(); i++) {
+    if (name == _root_nodes[i].name) return  _root_nodes[i].config;
+  }
+  LOG(WARNING) << "non-existent root node index.";
+  return _null;
+}
+
+bool ParameterServer::SetCurrentRoot(const std::string &name) {
+  for (size_t i = 0; i < _root_nodes.size(); i++) {
+    if (name == _root_nodes[i].name && _index != i) {
+      _index = i;
+      return true;
+    }
+  }
+  LOG(WARNING) << "non-existent root node index.";
+  return false;
+}
+
+bool ParameterServer::SetCurrentRoot(size_t index) {
+  if (index > _root_nodes.size()) return false;
+  if (index == _index ) return false;
+  _index = index;
+  return true;
+}
+
 static void handle_get_device_usage(struct mg_connection *nc) {
   // Use chunked encoding in order to avoid calculating Content-Length
   mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
@@ -164,6 +214,40 @@ static void handle_set_dev_ctrl(struct mg_connection *nc,struct http_message *hm
 #else
   mg_printf_http_chunk(nc, dump_string(dev_ctrl, JSON).c_str());
 #endif
+
+  // Send empty chunk, the end of response
+  mg_send_http_chunk(nc, "", 0);
+}
+
+static void handle_set_target_root(struct mg_connection *nc,struct http_message *hm) {
+  // Use chunked encoding in order to avoid calculating Content-Length
+  char * res = urlDecode(hm->message.p);
+  char *custom_head = strstr(res, "code_res=");
+  char *end =  strstr(res, "HTTP/1.1");
+
+  if (!(custom_head && end)) {
+    LOG(ERROR) << __FUNCTION__ << "error";
+    free(res);
+    mg_http_send_error(nc, 403, NULL);
+    return;
+  }
+
+  memset(cache, 0, CACHE_MAX_SIZE);
+  memcpy(cache, custom_head + 9,end - custom_head - 9);
+  free(res);
+
+  auto res_root = ParameterServer::instance()->SetCurrentRoot(cache);
+  if (res_root) {
+    auto dev_ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
+    mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
+#ifdef CONFIG_HIDEN_PARAM
+    mg_printf_http_chunk(nc, dump_string_with_hiden(dev_ctrl, JSON).c_str());
+#else
+    mg_printf_http_chunk(nc, dump_string(dev_ctrl, JSON).c_str());
+#endif
+  } else {
+    mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
+  }
 
   // Send empty chunk, the end of response
   mg_send_http_chunk(nc, "", 0);
@@ -292,7 +376,8 @@ public:
 
 ParameterServer::ParameterServer() :
 m_ServerThreadContext(nullptr),
-m_ServerThread(nullptr) {
+m_ServerThread(nullptr),
+_index(0) {
   m_ServerThreadContext = std::make_shared<ServerThread>(0);
   m_ServerThread = std::make_shared<Thread>(m_ServerThreadContext);
 #ifdef WITH_HTTP_PAGE
