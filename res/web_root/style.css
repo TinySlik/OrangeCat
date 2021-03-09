@@ -65,3 +65,69 @@ a:link, a:visited {
   text-decoration: none;
 }
 
+*{margin:0;padding:0;}
+	.select-menu{
+        cursor:pointer;
+		width:202px;
+        height:32px;
+		margin:120px 0 0 100px;
+	}
+body{
+font:14px Helvetica Neue,Helvetica,PingFang SC,\5FAE\8F6F\96C5\9ED1,Tahoma,Arial,sans-serif;
+}
+   .select-menu-ul{
+        margin-top:50px;
+		list-style:none;
+		opacity:0;
+		display:none;
+		width:200px;
+		text-align:left;
+		border:1px solid #ddd;
+		background:#fff;
+		position:absolute;
+		z-index:1;
+	}
+	.select-menu-ul li{
+		padding:2% 0 2% 3%;
+		
+	}
+	.select-menu-ul li:hover{
+		background:#f2f2f2;
+		
+	}
+	.select-menu-div{
+	    position:relative;
+		height:30px;
+		width:200px;
+		border:1px solid #ddd;
+		line-height:30px;
+	}
+    .select-this{
+	    background:#5FB878;
+	}
+	.select-this:hover{
+	     background:#5FB878!important;
+	}
+	i{
+	margin-right:5px;
+	position:absolute;
+	right:0;
+	top:7px;
+	
+	}
+	.select-menu-input{
+	margin-left:3%;
+	border:0;
+	height:29px;
+	cursor:pointer;
+	user-select:none;
+	}
+    .select-menu-i{
+	  transform:rotate(180deg);
+
+	}
+	i{
+	-webkit-transition: all 0.4s ease;
+	-o-transition: all 0.4s ease;
+	transition: all 0.4s ease;
+	}

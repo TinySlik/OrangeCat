@@ -139,6 +139,8 @@ configuru::Config &ParameterServer::GetRoot(const std::string &name) {
 
 bool ParameterServer::SetCurrentRoot(const std::string &name) {
   for (size_t i = 0; i < _root_nodes.size(); i++) {
+    LOG(ERROR) << name << "=====================" << _root_nodes[i].name << strcmp(name.c_str(), _root_nodes[i].name.c_str());
+    
     if (name == _root_nodes[i].name) {
       _index = i;
       return true;
@@ -233,7 +235,7 @@ static void handle_set_target_root(struct mg_connection *nc,struct http_message 
   }
 
   memset(cache, 0, CACHE_MAX_SIZE);
-  memcpy(cache, custom_head + 9,end - custom_head - 9);
+  memcpy(cache, custom_head + 9,end - custom_head - 10);
   free(res);
 
   auto res_root = ParameterServer::instance()->SetCurrentRoot(cache);

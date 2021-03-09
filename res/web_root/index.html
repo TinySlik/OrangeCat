@@ -13,11 +13,7 @@
     <div class="content">
       <img src="cat.svg" style="float:right; height: 70px; border-radius: 2px;">
       <h1>Orange Cat Parameter Server</h1>
-  
-      <p>
-        Parameter Debug.
-      </p>
-      
+      Taget Root: <input type="text" name="user" id ="root_select" />
       <fieldset>
         <legend>Device settings</legend>
         <div>
@@ -67,7 +63,7 @@
               }
             }
             const editor = new JSONEditor(container, options)
-            
+
             $.ajax({
               url: '/get_dev_ctrl',
               dataType: 'json',
