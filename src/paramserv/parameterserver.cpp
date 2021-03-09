@@ -139,7 +139,7 @@ configuru::Config &ParameterServer::GetRoot(const std::string &name) {
 
 bool ParameterServer::SetCurrentRoot(const std::string &name) {
   for (size_t i = 0; i < _root_nodes.size(); i++) {
-    if (name == _root_nodes[i].name && _index != i) {
+    if (name == _root_nodes[i].name) {
       _index = i;
       return true;
     }
@@ -278,6 +278,8 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
         handle_get_dev_ctrl(nc);
       } else if (mg_vcmp(&hm->uri, "/set_dev_ctrl") == 0) {
         handle_set_dev_ctrl(nc, hm);
+      } else if (mg_vcmp(&hm->uri, "/set_target_root") == 0) {
+        handle_set_target_root(nc, hm);
       } else {
         mg_serve_http(nc, hm, s_http_server_opts);  // Serve static content
       }

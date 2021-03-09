@@ -10,6 +10,19 @@ INITIALIZE_EASYLOGGINGPP
 
 int main(int argc, char* argv[]) {
   START_EASYLOGGINGPP(argc, argv);
+  ParameterServer::instance()->CreateNewRoot("default", {
+    {"pi",     3.14},
+    {"array",  configuru::Config::array({ 1, 2, 3 })},
+    {"dev_ctrl", {
+      { "key1", "value1" },
+      { "key2", "value2" },
+    }},
+    {"dev_status", {
+      { "key1", "value1" },
+      { "key2", "value2" },
+    }}
+  });
+  ParameterServer::instance()->SetCurrentRoot("default");
   auto ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
   ctrl["status"] = "ok";
   std::this_thread::sleep_for(std::chrono::seconds(1));
