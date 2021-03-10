@@ -72,6 +72,18 @@
                 }
             });
 
+            $("#root_select").change(function(){
+              $.ajax({
+                url: '/set_target_root',
+                data: "code_res=" + $("#root_select").val(),
+                dataType: 'json',
+                success: function(json_in) {
+                  json_dev_ctrl = json_in;
+                  editor.set(json_in);
+                }
+              });
+            })
+
             $("#sync_btn").click(function(){
               $.ajax({
                 url: '/get_dev_ctrl',
