@@ -139,8 +139,6 @@ configuru::Config &ParameterServer::GetRoot(const std::string &name) {
 
 bool ParameterServer::SetCurrentRoot(const std::string &name) {
   for (size_t i = 0; i < _root_nodes.size(); i++) {
-    LOG(ERROR) << name << "=====================" << _root_nodes[i].name << strcmp(name.c_str(), _root_nodes[i].name.c_str());
-    
     if (name == _root_nodes[i].name) {
       _index = i;
       return true;
