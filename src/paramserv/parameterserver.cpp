@@ -137,6 +137,15 @@ configuru::Config &ParameterServer::GetRoot(const std::string &name) {
   return _null;
 }
 
+configuru::Config &ParameterServer::GetRootOrCreate(const std::string &name, configuru::Config &&config) {
+  size_t i = 0;
+  for (; i < _root_nodes.size(); i++) {
+    if (name == _root_nodes[i].name) return  _root_nodes[i].config;
+  }
+  CreateNewRoot(name, &config);
+  return _root_nodes[i].config;
+}
+
 bool ParameterServer::SetCurrentRoot(const std::string &name) {
   for (size_t i = 0; i < _root_nodes.size(); i++) {
     if (name == _root_nodes[i].name) {

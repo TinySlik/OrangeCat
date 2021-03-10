@@ -35,6 +35,8 @@ class ParameterServer {
   bool CreateNewRoot(const std::string &name,
       configuru::Config &&config = configuru::Config::object());
   configuru::Config &GetRoot(const std::string &name) ;
+  configuru::Config &GetRootOrCreate(const std::string &name,
+      configuru::Config &&config);
   bool RemoveRoot(const std::string &name) ;
   bool SetCurrentRoot(const std::string &name);
   bool SetCurrentRoot(size_t index = 0);
