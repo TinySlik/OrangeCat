@@ -142,7 +142,15 @@ configuru::Config &ParameterServer::GetRootOrCreate(const std::string &name, con
   for (; i < _root_nodes.size(); i++) {
     if (name == _root_nodes[i].name) return  _root_nodes[i].config;
   }
-  CreateNewRoot(name, &config);
+  if (_root_nodes.size() > MAX_ROOT_NODE_COUNT)
+        return _null;
+  for (size_t i = 0; i < _root_nodes.size(); i++) {
+    if (name == _root_nodes[i].name) {
+      LOG(WARNING) << "Duplicate name index.";
+      return _null;
+    }
+  }
+  _root_nodes.push_back({name, config});
   return _root_nodes[i].config;
 }
 
