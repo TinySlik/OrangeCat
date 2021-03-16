@@ -169,7 +169,6 @@ add_custom_command(OUTPUT  ${RES_DIR_OUTPUT}
  )
 add_custom_target(res ALL DEPENDS ${RES_DIR_OUTPUT})
 
-
 add_custom_command(TARGET res
   POST_BUILD 
   COMMAND echo "executing a res command"

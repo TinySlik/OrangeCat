@@ -11,7 +11,6 @@ INITIALIZE_EASYLOGGINGPP
 int main(int argc, char* argv[]) {
   START_EASYLOGGINGPP(argc, argv);
   ParameterServer::instance()->CreateNewRoot("default", {
-    
     {"dev_ctrl", {
       { "key1", "value1" },
       { "key2", "value2" },
@@ -31,10 +30,19 @@ int main(int argc, char* argv[]) {
       {"pi",     3.14},
     }}
   });
+  
+
   ParameterServer::instance()->SetCurrentRoot("second");
   auto ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
+
+  ctrl["pi"].add_callback([](configuru::Config &, const configuru::Config &b)->bool{
+      LOG(INFO) << b;
+      return true;
+    });
+  std::cout << "";
   ctrl["status"] = "ok";
   std::this_thread::sleep_for(std::chrono::seconds(1));
+  ctrl["pi"] << 67.7;
   LOG(INFO) << "Press Enter to exit." << std::endl;
   std::cin.get();
   LOG(INFO) << "Exit." << std::endl;
