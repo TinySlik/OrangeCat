@@ -17,7 +17,7 @@ typedef  struct config_root {
   configuru::Config config;
 } CFG_ROOT;
 
-class ParameterServer {
+class __declspec(dllexport) ParameterServer {
  private:
   explicit ParameterServer();
   ~ParameterServer() {
