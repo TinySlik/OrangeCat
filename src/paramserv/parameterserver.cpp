@@ -220,6 +220,9 @@ static void handle_set_dev_ctrl(struct mg_connection *nc,struct http_message *hm
   auto config_in = parse_string(cache, JSON, CONFIGURU_JSON_PARSE_ERROR_LOG);
   auto dev_ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
 
+  std::cout << dev_ctrl;
+
+  std::cout << config_in;
   mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
   if (Config::deep_async(dev_ctrl, config_in)) {
 #ifdef DEBUG_PARAM_SERV

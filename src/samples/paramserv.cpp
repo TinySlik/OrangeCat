@@ -30,7 +30,6 @@ int main(int argc, char* argv[]) {
       {"pi",     3.14},
     }}
   });
-  
 
   ParameterServer::instance()->SetCurrentRoot("second");
   auto ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
