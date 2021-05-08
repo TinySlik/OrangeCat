@@ -1,7 +1,7 @@
 #define CONFIGURU_IMPLEMENTATION 1
-#include "parameterserver.h"
 #include <thread>
 #include <chrono>
+#include "parameterserver.h"
 
 #define ELPP_THREAD_SAFE
 #define ELPP_FORCE_USE_STD_THREAD
@@ -10,7 +10,7 @@
 
 // INITIALIZE_EASYLOGGINGPP
 
-int main(int argc, char* argv[]) {
+int main(int, char*) {
   // START_EASYLOGGINGPP(argc, argv);
   ParameterServer::instance()->CreateNewRoot("default", {
     {"dev_ctrl", {
@@ -35,6 +35,7 @@ int main(int argc, char* argv[]) {
   ParameterServer::instance()->SetCurrentRoot("second");
   auto ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
   ctrl["status"] = "ok";
+
   std::this_thread::sleep_for(std::chrono::seconds(1));
   // LOG(INFO) << "Press Enter to exit." << std::endl;
   std::cout << "Press Enter to exit." << std::endl;

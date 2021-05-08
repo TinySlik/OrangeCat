@@ -7,9 +7,10 @@
 #include <chrono>
 #include "easylogging++.h"
 #include <iostream>
+#include <string>
 
 #define CONFIGURU_IMPLEMENTATION 1
-#define TARGET_WEB_DIR_NAME "C:\\Users\\dell-a6\\develop\\OrangeCat\\_output\\res\\web_root"
+#define TARGET_WEB_DIR_NAME "D:\\develop\\OrangeCat\\_output\\bin\\web_root"
 #define CONFIGURU_JSON_PARSE_ERROR_LOG ""
 #define CACHE_MAX_SIZE (128*1024)
 #define STATUS_DISPLAY_TIME_INTERVAL 1000
@@ -107,7 +108,8 @@ static char cache[CACHE_MAX_SIZE];
 *exp ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-bool ParameterServer::CreateNewRoot(const std::string &name, configuru::Config &&config) {
+bool ParameterServer::CreateNewRoot(const std::string &name,
+    configuru::Config &&config) {
   if (_root_nodes.size() > MAX_ROOT_NODE_COUNT)
         return false;
   for (size_t i = 0; i < _root_nodes.size(); i++) {
@@ -144,9 +146,8 @@ configuru::Config &ParameterServer::GetRootOrCreate(const std::string &name, con
   for (; i < _root_nodes.size(); i++) {
     if (name == _root_nodes[i].name) return  _root_nodes[i].config;
   }
-  if (_root_nodes.size() > MAX_ROOT_NODE_COUNT)
-        return _null;
-  for (size_t i = 0; i < _root_nodes.size(); i++) {
+  if (_root_nodes.size() > MAX_ROOT_NODE_COUNT) return _null;
+  for (i = 0; i < _root_nodes.size(); i++) {
     if (name == _root_nodes[i].name) {
       LOG(WARNING) << "Duplicate name index.";
       return _null;
