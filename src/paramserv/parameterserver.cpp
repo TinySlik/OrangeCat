@@ -355,8 +355,6 @@ public:
     struct mg_mgr mgr;
     struct mg_connection *nc;
     cs_stat_t st;
-	static int count_;
-	std::cout << count_++ << "===========" << std::endl;
     mg_mgr_init(&mgr, NULL);
     nc = mg_bind(&mgr, s_http_port, ev_handler);
 	while (nc == NULL && s_http_port[3] != '0') {
