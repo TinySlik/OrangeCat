@@ -1971,9 +1971,13 @@ private:
 template <typename T_Ptr, typename T_Key = const char*>
 class Registry : public AbstractRegistry<T_Ptr, std::map<T_Key, T_Ptr*>> {
 public:
+#ifdef OS_WIN
     // typedef typename Registry<T_Ptr, T_Key>::iterator iterator;
     // typedef typename Registry<T_Ptr, T_Key>::const_iterator const_iterator;
-
+#else
+    typedef typename Registry<T_Ptr, T_Key>::iterator iterator;
+    typedef typename Registry<T_Ptr, T_Key>::const_iterator const_iterator;
+#endif
     Registry(void) {}
 
     /// @brief Copy constructor that is useful for base classes. Try to avoid this constructor, use move constructor.
@@ -2047,9 +2051,13 @@ private:
 template <typename T_Ptr, typename Pred>
 class RegistryWithPred : public AbstractRegistry<T_Ptr, std::vector<T_Ptr*>> {
 public:
+#ifdef OS_WIN
     // typedef typename RegistryWithPred<T_Ptr, Pred>::iterator iterator;
     // typedef typename RegistryWithPred<T_Ptr, Pred>::const_iterator const_iterator;
-
+#else
+    typedef typename RegistryWithPred<T_Ptr, Pred>::iterator iterator;
+    typedef typename RegistryWithPred<T_Ptr, Pred>::const_iterator const_iterator;
+#endif
     RegistryWithPred(void) {
     }
 

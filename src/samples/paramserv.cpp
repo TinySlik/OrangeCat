@@ -10,7 +10,7 @@
 
 // INITIALIZE_EASYLOGGINGPP
 
-int main(int, char*) {
+int main(int, char**) {
   // START_EASYLOGGINGPP(argc, argv);
   ParameterServer::instance()->CreateNewRoot("default", {
     {"dev_ctrl", {
