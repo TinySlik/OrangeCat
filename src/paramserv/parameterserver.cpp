@@ -3,8 +3,11 @@
 #include "urldecode.h"
 #define ELPP_THREAD_SAFE
 #define ELPP_FORCE_USE_STD_THREAD
+#include <thread>
+#include <chrono>
 #include "easylogging++.h"
 #include <iostream>
+#include <string>
 
 #define CONFIGURU_IMPLEMENTATION 1
 #define TARGET_WEB_DIR_NAME "../res/web_root"
@@ -18,7 +21,7 @@ INITIALIZE_EASYLOGGINGPP
 
 #include "configuru.hpp"
 using namespace configuru;
-static const char *s_http_port = "8099";
+static char s_http_port[] = "8099";
 static struct mg_serve_http_opts s_http_server_opts;
 static char cache[CACHE_MAX_SIZE];
 
@@ -105,7 +108,8 @@ static char cache[CACHE_MAX_SIZE];
 *exp ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-bool ParameterServer::CreateNewRoot(const std::string &name, configuru::Config &&config) {
+bool ParameterServer::CreateNewRoot(const std::string &name,
+    configuru::Config &&config) {
   if (_root_nodes.size() > MAX_ROOT_NODE_COUNT)
         return false;
   for (size_t i = 0; i < _root_nodes.size(); i++) {
@@ -142,9 +146,8 @@ configuru::Config &ParameterServer::GetRootOrCreate(const std::string &name, con
   for (; i < _root_nodes.size(); i++) {
     if (name == _root_nodes[i].name) return  _root_nodes[i].config;
   }
-  if (_root_nodes.size() > MAX_ROOT_NODE_COUNT)
-        return _null;
-  for (size_t i = 0; i < _root_nodes.size(); i++) {
+  if (_root_nodes.size() > MAX_ROOT_NODE_COUNT) return _null;
+  for (i = 0; i < _root_nodes.size(); i++) {
     if (name == _root_nodes[i].name) {
       LOG(WARNING) << "Duplicate name index.";
       return _null;
@@ -355,12 +358,19 @@ public:
     struct mg_mgr mgr;
     struct mg_connection *nc;
     cs_stat_t st;
-
+	static int count_;
+	std::cout << count_++ << "===========" << std::endl;
     mg_mgr_init(&mgr, NULL);
     nc = mg_bind(&mgr, s_http_port, ev_handler);
-    if (nc == NULL) {
+	while (nc == NULL && s_http_port[3] != '0') {
+	  LOG(WARNING) << "Cannot bind to " << s_http_port << std::endl;
+	  s_http_port[3]--;
+	  LOG(WARNING) << "Try " << s_http_port << std::endl;
+	  nc = mg_bind(&mgr, s_http_port, ev_handler);
+	}
+	if (s_http_port[3] == '0') {
 #ifdef DEBUG_PARAM_SERV
-      LOG(ERROR) << "Cannot bind to %s\n" << s_http_port << std::endl;
+	  LOG(ERROR) << "failed";
 #endif
       exit(1);
     }
@@ -374,7 +384,7 @@ public:
 #endif
       while (requestedState!=STOP) {
         // waiting for close;
-        sleep(1);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
       }
       return;
     }

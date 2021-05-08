@@ -10,6 +10,7 @@
 #include <functional>
 #include <atomic>
 #include <iostream>
+#include "windllsupport.h"
 #define MAX_ROOT_NODE_COUNT (256)
 
 typedef  struct config_root {
@@ -17,7 +18,7 @@ typedef  struct config_root {
   configuru::Config config;
 } CFG_ROOT;
 
-class ParameterServer {
+class CLASS_DECLSPEC ParameterServer {
  private:
   explicit ParameterServer();
   ~ParameterServer() {

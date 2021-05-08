@@ -1,15 +1,17 @@
-#include "parameterserver.h"
+#define CONFIGURU_IMPLEMENTATION 1
 #include <thread>
 #include <chrono>
+#include "parameterserver.h"
 
-#define ELPP_THREAD_SAFE
-#define ELPP_FORCE_USE_STD_THREAD
-#include "easylogging++.h"
+// #define ELPP_THREAD_SAFE
+// #define ELPP_FORCE_USE_STD_THREAD
 
-INITIALIZE_EASYLOGGINGPP
+// #include "easylogging++.h"
 
-int main(int argc, char* argv[]) {
-  START_EASYLOGGINGPP(argc, argv);
+// INITIALIZE_EASYLOGGINGPP
+
+int main(int, char**) {
+  // START_EASYLOGGINGPP(argc, argv);
   ParameterServer::instance()->CreateNewRoot("default", {
     {"dev_ctrl", {
       { "key1", "value1" },
@@ -35,15 +37,17 @@ int main(int argc, char* argv[]) {
   auto ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
 
   ctrl["pi"].add_callback([](configuru::Config &, const configuru::Config &b)->bool{
-      LOG(INFO) << b;
+//      LOG(INFO) << b;
       return true;
     });
   std::cout << "";
   ctrl["status"] = "ok";
+
   std::this_thread::sleep_for(std::chrono::seconds(1));
-  ctrl["pi"] << 67.7;
-  LOG(INFO) << "Press Enter to exit." << std::endl;
+  // LOG(INFO) << "Press Enter to exit." << std::endl;
+  std::cout << "Press Enter to exit." << std::endl;
   std::cin.get();
-  LOG(INFO) << "Exit." << std::endl;
+  std::cout << "Exit." << std::endl;
+  // LOG(INFO) << "Exit." << std::endl;
   return 0;
 }
