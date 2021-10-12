@@ -120,4 +120,27 @@
           <div id="dev_status"></div>
       </div>
     </fieldset>
+    url: '/jsonp',
+        jsonp: 'cb',
+        jsonpCallback: 'fn',
+        dataType: 'jsonp'
+    <script>
+      $(document).ready(function () {
+          $("#btnooo").click(function () {
+              $.ajax({
+                  url: "http://192.168.1.220:8099/jsonp",
+                  jsonp: 'cb',
+                  jsonpCallback: 'fn',
+                  dataType: 'jsonp',
+                  success: function (data) {
+                      var result = JSON.stringify(data);
+                      console.log(result);
+                      $("#textooo").val(result);
+                  }
+              });
+          });
+      });
+  </script>
+    <input id="btnooo" type="button" value="跨域获取数据" />
+    <textarea id="textooo" style="width: 400px; height: 100px;"></textarea>
   </body></html>

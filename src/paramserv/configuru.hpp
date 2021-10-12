@@ -362,6 +362,7 @@ namespace configuru
 		Config(Config&& o) noexcept;
 		Config& operator=(const Config& o);
 		Config& operator<<(const Config& o);
+		Config& operator+=(const Config& o);
 
 		void add_callback(std::function<bool(Config& dst, const Config& in)> func) {
 		  func_array.push_back(func);
@@ -1648,6 +1649,20 @@ namespace configuru
 	  return *this;
 	}
 
+	Config& Config::operator+=(const Config& o)
+    {
+        if (&o == this) { return *this; }
+        if (_type != o._type) { return *this; }
+        if (_type == Object) {
+            auto&& b_object = o.as_object()._impl;
+            for (auto&& p: b_object) {
+              (*this)[p.first] = p.second._value;
+            }
+        } else {
+            return *this;
+        }
+    }
+
 	Config& Config::operator=(const Config& o)
 	{
 		if (&o == this) { return *this; }
@@ -1985,30 +2000,6 @@ namespace configuru
 	      }
 	    }
 	  } else if (a._type == Array) {
-		// if (b._type == Array) {
-		// 	if (a.func_array.size() == b.func_array.size()) {
-		// 		bool pass = bool(a.func_array.size());
-		// 		for (size_t i = 0; i < a.func_array.size(); ++i) {
-		// 			pass *= a.func_array[i](a, b);
-		// 		}
-		// 		if (pass) {
-		// 			result = false;
-		// 			a = b;
-		// 		} else {
-		// 			auto&& a_array = a.as_array();
-		// 			auto&& b_array = b.as_array();
-		// 			for (size_t i=0; i<a_array.size(); ++i) {
-		// 				result *= deep_async(a_array[i], b_array[i]);
-		// 			}
-		// 		}
-		// 	} else {
-		// 		result = false;
-		// 		a = b;
-		// 	}
-		// } else {
-		// 	result = false;
-		// 	a = b;
-		// }
 	    if (!deep_eq(a, b)) {
 	      bool pass = bool(a.func_array.size());
 	      for (size_t i = 0; i < a.func_array.size(); ++i) {
@@ -2021,7 +2012,7 @@ namespace configuru
 		auto&& a_array = a.as_array();
 		auto&& b_array = b.as_array();
 		for (size_t i=0; i<a_array.size(); ++i) {
-		  result *= deep_async(a_array[i], b_array[i]);
+		  result *= deep_async(a_array[i], a_array[i]);
 		}
 	      }
 	    }

@@ -1,3 +1,18 @@
+/** Copyright 2021 Tiny Oh, Ltd. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef PARAMETERSERVER_H
 #define PARAMETERSERVER_H
 
@@ -41,38 +56,10 @@ class CLASS_DECLSPEC ParameterServer {
   bool RemoveRoot(const std::string &name) ;
   bool SetCurrentRoot(const std::string &name);
   bool SetCurrentRoot(size_t index = 0);
-  inline configuru::Config &GetCfgStatusRoot() {
-    if (_root_nodes.size() == 0) {
-      _cfgRoot.judge_or_create_key("dev_status");
-      return _cfgRoot["dev_status"];
-    } else {
-      return _root_nodes[_index].config.judge_with_create_key("dev_status");
-    }
-  }
-  inline configuru::Config &GetCfgRoot() {
-    if (_root_nodes.size() == 0) {
-      return _cfgRoot;
-    } else {
-      return _root_nodes[_index].config;
-    }
-  }
-  inline configuru::Config &GetCfgCtrlRoot() {
-    if (_root_nodes.size() == 0) {
-      _cfgRoot.judge_or_create_key("dev_ctrl");
-      return _cfgRoot["dev_ctrl"];
-    } else {
-      return _root_nodes[_index].config.judge_with_create_key("dev_ctrl");
-    }
-  }
-  static ParameterServer *instance() {
-    static ParameterServer *_this = nullptr;
-    if (_this == nullptr) {
-      _this = new ParameterServer;
-      _this->init();
-      _this->start_server();
-    }
-    return _this;
-  }
+  inline configuru::Config &GetCfgStatusRoot();
+  inline configuru::Config &GetCfgRoot();
+  inline configuru::Config &GetCfgCtrlRoot();
+  static ParameterServer *instance();
   inline bool is_debug() {return debug_;}
   void init();
   void start_server();

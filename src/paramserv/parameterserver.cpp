@@ -1,3 +1,18 @@
+/** Copyright 2021 Tiny Oh, Ltd. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "parameterserver.h"
 #include "mongoose.h"
 #include "urldecode.h"
@@ -108,6 +123,39 @@ static char cache[CACHE_MAX_SIZE];
 *exp ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
+configuru::Config &ParameterServer::GetCfgStatusRoot() {
+  if (_root_nodes.size() == 0) {
+    _cfgRoot.judge_or_create_key("dev_status");
+    return _cfgRoot["dev_status"];
+  } else {
+    return _root_nodes[_index].config.judge_with_create_key("dev_status");
+  }
+}
+configuru::Config &ParameterServer::GetCfgRoot() {
+  if (_root_nodes.size() == 0) {
+    return _cfgRoot;
+  } else {
+    return _root_nodes[_index].config;
+  }
+}
+configuru::Config &ParameterServer::GetCfgCtrlRoot() {
+  if (_root_nodes.size() == 0) {
+    _cfgRoot.judge_or_create_key("dev_ctrl");
+    return _cfgRoot["dev_ctrl"];
+  } else {
+    return _root_nodes[_index].config.judge_with_create_key("dev_ctrl");
+  }
+}
+ParameterServer *ParameterServer::instance() {
+  static ParameterServer *_this = nullptr;
+  if (_this == nullptr) {
+    _this = new ParameterServer;
+    _this->init();
+    _this->start_server();
+  }
+  return _this;
+}
+
 bool ParameterServer::CreateNewRoot(const std::string &name,
     configuru::Config &&config) {
   if (_root_nodes.size() > MAX_ROOT_NODE_COUNT)
@@ -192,10 +240,10 @@ static void handle_get_device_usage(struct mg_connection *nc) {
     cfg["dev_status"]= Config::object();
   }
   auto dev_status = cfg["dev_status"];
-  dev_status["mem"] = mem;
-  dev_status["vmem"] = vmem;
-  dev_status["io_r"] = r;
-  dev_status["io_w"] = w;
+//  dev_status["mem"] = mem;
+//  dev_status["vmem"] = vmem;
+//  dev_status["io_r"] = r;
+//  dev_status["io_w"] = w;
 
   mg_printf_http_chunk(nc, dump_string(dev_status, JSON).c_str());
 
@@ -203,7 +251,7 @@ static void handle_get_device_usage(struct mg_connection *nc) {
   mg_send_http_chunk(nc, "", 0);
 }
 
-static void handle_set_dev_ctrl(struct mg_connection *nc,struct http_message *hm) {
+static void handle_set_dev_ctrl(struct mg_connection *nc, struct http_message *hm) {
   // Use chunked encoding in order to avoid calculating Content-Length
   char * res = urlDecode(hm->message.p);
   char *custom_head = strstr(res, "code_res=");
@@ -212,20 +260,17 @@ static void handle_set_dev_ctrl(struct mg_connection *nc,struct http_message *hm
   if (!(custom_head && end)) {
     LOG(ERROR) << __FUNCTION__ << "error";
     free(res);
-    mg_http_send_error(nc, 403, NULL);
+    mg_http_send_error(nc, 403, nullptr);
     return;
   }
 
   memset(cache, 0, CACHE_MAX_SIZE);
-  memcpy(cache, custom_head + 9,end - custom_head - 9);
+  memcpy(cache, custom_head + 9, end - custom_head - 9);
   free(res);
 
   auto config_in = parse_string(cache, JSON, CONFIGURU_JSON_PARSE_ERROR_LOG);
   auto dev_ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
 
-  std::cout << dev_ctrl;
-
-  std::cout << config_in;
   mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
   if (Config::deep_async(dev_ctrl, config_in)) {
 #ifdef DEBUG_PARAM_SERV
@@ -291,6 +336,39 @@ static void handle_get_dev_ctrl(struct mg_connection *nc) {
   mg_send_http_chunk(nc, "", 0);
 }
 
+static void handle_jsonp(struct mg_connection *nc, struct http_message *hm) {
+  // Use chunked encoding in order to avoid calculating Content-Length
+  char *res = urlDecode(hm->message.p);
+  char *custom_head = strstr(res, "jsonp");
+  char *end =  strstr(res, "HTTP/1.1");
+  if (!(custom_head && end)) {
+    LOG(ERROR) << __FUNCTION__ << "error";
+    free(res);
+    mg_http_send_error(nc, 403, nullptr);
+    return;
+  }
+
+  memset(cache, 0, CACHE_MAX_SIZE);
+  memcpy(cache, custom_head + 6, end - custom_head - 6);
+  free(res);
+
+  LOG(INFO) << cache;
+
+  // Use chunked encoding in order to avoid calculating Content-Length
+  mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
+
+  auto dev_ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
+  std::string og = "fn(";
+#ifdef CONFIG_HIDEN_PARAM
+  mg_printf_http_chunk(nc, ( og + dump_string_with_hiden(dev_ctrl, JSON) + ")") .c_str());
+#else
+  mg_printf_http_chunk(nc, ( og + dump_string(dev_ctrl, JSON) + ")").c_str());
+#endif
+
+  // Send empty chunk, the end of response
+  mg_send_http_chunk(nc, "", 0);
+}
+
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
   struct http_message *hm = (struct http_message *) ev_data;
   switch (ev) {
@@ -303,6 +381,9 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
         handle_set_dev_ctrl(nc, hm);
       } else if (mg_vcmp(&hm->uri, "/set_target_root") == 0) {
         handle_set_target_root(nc, hm);
+      } else if (mg_vcmp(&hm->uri, "/jsonp") == 0) {
+        LOG(INFO) << "bingo";
+        handle_jsonp(nc, hm);
       } else {
         mg_serve_http(nc, hm, s_http_server_opts);  // Serve static content
       }
@@ -358,8 +439,6 @@ public:
     struct mg_mgr mgr;
     struct mg_connection *nc;
     cs_stat_t st;
-	static int count_;
-	std::cout << count_++ << "===========" << std::endl;
     mg_mgr_init(&mgr, NULL);
     nc = mg_bind(&mgr, s_http_port, ev_handler);
 	while (nc == NULL && s_http_port[3] != '0') {
@@ -410,6 +489,14 @@ ParameterServer::ParameterServer() :
 m_ServerThreadContext(nullptr),
 m_ServerThread(nullptr),
 _index(0) {
+  el::Configurations defaultConf;
+  defaultConf.setToDefault();
+
+  defaultConf.setGlobally(el::ConfigurationType::ToFile, "true");
+  defaultConf.setGlobally(el::ConfigurationType::Filename, "param_server.log");
+  defaultConf.setGlobally(el::ConfigurationType::ToStandardOutput, "false");
+  // default logger uses default configurations
+  el::Loggers::reconfigureLogger("default", defaultConf);
   m_ServerThreadContext = std::make_shared<ServerThread>(0);
   m_ServerThread = std::make_shared<Thread>(m_ServerThreadContext);
 #ifdef WITH_HTTP_PAGE
