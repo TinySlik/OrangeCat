@@ -56,9 +56,9 @@ class CLASS_DECLSPEC ParameterServer {
   bool RemoveRoot(const std::string &name) ;
   bool SetCurrentRoot(const std::string &name);
   bool SetCurrentRoot(size_t index = 0);
-  inline configuru::Config &GetCfgStatusRoot();
-  inline configuru::Config &GetCfgRoot();
-  inline configuru::Config &GetCfgCtrlRoot();
+  configuru::Config &GetCfgStatusRoot();
+  configuru::Config &GetCfgRoot();
+  configuru::Config &GetCfgCtrlRoot();
   static ParameterServer *instance();
   inline bool is_debug() {return debug_;}
   void init();

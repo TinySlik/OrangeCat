@@ -336,6 +336,7 @@ static void handle_get_dev_ctrl(struct mg_connection *nc) {
   mg_send_http_chunk(nc, "", 0);
 }
 
+#ifdef WITH_HTTP_PAGE
 static void handle_jsonp(struct mg_connection *nc, struct http_message *hm) {
   // Use chunked encoding in order to avoid calculating Content-Length
   char *res = urlDecode(hm->message.p);
@@ -368,6 +369,7 @@ static void handle_jsonp(struct mg_connection *nc, struct http_message *hm) {
   // Send empty chunk, the end of response
   mg_send_http_chunk(nc, "", 0);
 }
+#endif
 
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
   struct http_message *hm = (struct http_message *) ev_data;
@@ -381,9 +383,10 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
         handle_set_dev_ctrl(nc, hm);
       } else if (mg_vcmp(&hm->uri, "/set_target_root") == 0) {
         handle_set_target_root(nc, hm);
+#ifdef WITH_HTTP_PAGE
       } else if (mg_vcmp(&hm->uri, "/jsonp") == 0) {
-        LOG(INFO) << "bingo";
         handle_jsonp(nc, hm);
+#endif
       } else {
         mg_serve_http(nc, hm, s_http_server_opts);  // Serve static content
       }
