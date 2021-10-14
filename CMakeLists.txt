@@ -81,36 +81,6 @@ else()
   file(TO_NATIVE_PATH "${CMAKE_INSTALL_PREFIX}" ORANGECAT_SDK_INSTALL_DIR)
 endif()
 
-# configure_file(
-#   include/mynteye/mynteye.h.in
-#   include/mynteye/mynteye.h @ONLY
-# )
-
-# configure_file(
-#   cmake/templates/pkginfo.sh.in
-#   ${CMAKE_CURRENT_SOURCE_DIR}/pkginfo.sh @ONLY
-# )
-# if(OS_WIN)
-#   configure_file(
-#     scripts/win/nsis/winpack.nsi.in
-#     ${CMAKE_CURRENT_SOURCE_DIR}/winpack.nsi @ONLY
-#   )
-# endif()
-
-# rpath
-
-# set(CMAKE_MACOSX_RPATH 1)
-# set(MYNTEYE_CMAKE_RPATH "")
-# if(WITH_OPENCV)
-#   list(APPEND MYNTEYE_CMAKE_RPATH ${OpenCV_LIB_PATH})
-# endif()
-# if(MYNTEYE_CMAKE_RPATH)
-#   message(STATUS "RPATH: ${MYNTEYE_CMAKE_RPATH}")
-#   set(CMAKE_INSTALL_RPATH "${MYNTEYE_CMAKE_RPATH}")
-# endif()
-
-# targets
-
 add_definitions(-DORANGECAT_EXPORTS)
 
 set(OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/_output")
@@ -120,44 +90,11 @@ set_outdir(
   "${OUT_DIR}/bin"
 )
 
-# set_target_properties(${ORANGECAT} PROPERTIES
-#   VERSION ${PROJECT_VERSION}
-#   SOVERSION ${PROJECT_VERSION_MAJOR}
-# )
-
-# install
-
 set(ORANGECAT_CMAKE_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/include/${ORANGECAT}")
 set(ORANGECAT_CMAKE_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
 set(ORANGECAT_CMAKE_LIBDIR "${CMAKE_INSTALL_PREFIX}/lib")
 set(ORANGECAT_CMAKE_INSTALLDIR "${ORANGECAT_CMAKE_LIBDIR}/cmake/${ORANGECAT}")
 
-# install(TARGETS ${ORANGECAT}
-#   EXPORT ${ORANGECAT}-targets
-#   RUNTIME DESTINATION ${ORANGECAT_CMAKE_BINDIR}
-#   LIBRARY DESTINATION ${ORANGECAT_CMAKE_LIBDIR}
-#   ARCHIVE DESTINATION ${ORANGECAT_CMAKE_LIBDIR}
-# )
-
-# configure_package_config_file(mynteye-config.cmake.in
-#   ${CMAKE_CURRENT_BINARY_DIR}/mynteye-config.cmake
-#   INSTALL_DESTINATION ${ORANGECAT_CMAKE_INSTALLDIR}
-#   NO_CHECK_REQUIRED_COMPONENTS_MACRO
-# )
-
-# write_basic_package_version_file(mynteye-config-version.cmake
-#   VERSION ${PROJECT_VERSION} COMPATIBILITY SameMajorVersion
-# )
-
-# install(FILES
-#   ${CMAKE_CURRENT_BINARY_DIR}/mynteye-config.cmake
-#   ${CMAKE_CURRENT_BINARY_DIR}/mynteye-config-version.cmake
-#   DESTINATION ${MYNTEYE_CMAKE_INSTALLDIR}
-# )
-
-# install(EXPORT ${TO_PIPELINE}-targets
-#   DESTINATION ${ORANGECAT_CMAKE_INSTALLDIR}
-# )
 
 add_subdirectory(src)
 set(RES_DIR_OUTPUT ${OUT_DIR}/res)
@@ -185,13 +122,3 @@ set_default_value(${PROJECT_NAME}_VERSION_MAJOR 0)
 set_default_value(${PROJECT_NAME}_VERSION_MINOR 0)
 set_default_value(${PROJECT_NAME}_VERSION_PATCH 0)
 set_default_value(${PROJECT_NAME}_VERSION_TWEAK 0)
-
-# configure_file(
-#   cmake/templates/build.info.in
-#   build.info @ONLY
-# )
-
-# install(FILES
-#   ${CMAKE_CURRENT_BINARY_DIR}/build.info
-#   DESTINATION ${CMAKE_INSTALL_PREFIX}/share/mynteye
-# )
