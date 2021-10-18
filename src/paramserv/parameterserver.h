@@ -41,7 +41,9 @@ class CLASS_DECLSPEC ParameterServer {
   }
 
   std::shared_ptr<Runnable> m_ServerThreadContext;
+  std::shared_ptr<Runnable> m_MutilCastThreadContext;
   std::shared_ptr<Thread> m_ServerThread;
+  std::shared_ptr<Thread> m_MutilCastThread;
   configuru::Config _cfgRoot;
   std::vector<CFG_ROOT> _root_nodes;
   configuru::Config _null;
