@@ -40,7 +40,7 @@
 
 const int kPort = 12021;
 const uint64_t kApplicationId = 7681412;
-const unsigned int kMulticastAddress = (224 << 24) + (0 << 16) + (0 << 8) + 123; // 224.0.0.123
+const unsigned int kMulticastAddress = (239 << 24) + (255 << 16) + (255 << 8) + 123; // 239.255.255.123
 
 
 #define CONFIGURU_IMPLEMENTATION 1
@@ -549,6 +549,7 @@ public:
     std::cout << "hello mutilcast" << std::endl;
     udpdiscovery::PeerParameters parameters;
     parameters.set_multicast_group_address(kMulticastAddress);
+    // parameters.set_can_use_broadcast(true);
     parameters.set_can_use_multicast(true);
     parameters.set_can_discover(true);
     parameters.set_can_be_discovered(true);
