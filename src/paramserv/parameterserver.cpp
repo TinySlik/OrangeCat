@@ -40,8 +40,7 @@
 
 const int kPort = 12021;
 const uint64_t kApplicationId = 7681412;
-const unsigned int kMulticastAddress = (239 << 24) + (255 << 16) + (255 << 8) + 123; // 239.255.255.123
-
+const unsigned int kMulticastAddress = (236 << 24) + (255 << 16) + (255 << 8) + 123; // 236.255.255.123
 
 #define CONFIGURU_IMPLEMENTATION 1
 #define TARGET_WEB_DIR_NAME "../res/web_root"
@@ -126,7 +125,7 @@ static char cache[CACHE_MAX_SIZE];
     configuru::dump_file("your/path/to/out_put_config.json", cfg["target_parm_index"], configuru::JSON / configuru::CFG);
     -------------------------------------------------
  *  the second level config node such as
-    cfg["first_level"]["second_level"] = "your_value" will be crush when the cfg["first_level"] is exist as a object;
+    cfg["first_level"]["second_level"] = "your_value" will be crush when the cfg["first_level"] is not exist as a object;
     to solve this problem, you should use cfg.judge_or_create_key("first_level") to make sure the first level object is exist or you will create it;
 
  *  sometimes we want to use some config but not show on the web server, then we should use hiden
@@ -259,10 +258,10 @@ static void handle_get_device_usage(struct mg_connection *nc) {
     cfg["dev_status"]= Config::object();
   }
   auto dev_status = cfg["dev_status"];
-//  dev_status["mem"] = mem;
-//  dev_status["vmem"] = vmem;
-//  dev_status["io_r"] = r;
-//  dev_status["io_w"] = w;
+  //  dev_status["mem"] = mem;
+  //  dev_status["vmem"] = vmem;
+  //  dev_status["io_r"] = r;
+  //  dev_status["io_w"] = w;
 
   mg_printf_http_chunk(nc, dump_string(dev_status, JSON).c_str());
 
@@ -428,11 +427,29 @@ private:
   ThreadState requestedState=INIT;
   ThreadState currentState=INIT;
   int id;
-
+  struct mg_mgr mgr;
+  struct mg_connection *nc;
+  cs_stat_t st;
 public:
   ServerThread(int id) {
     this->id=id;
     condition=new Condition(mmutex);
+#ifdef WITH_HTTP_PAGE
+    mg_mgr_init(&mgr, NULL);
+    nc = mg_bind(&mgr, s_http_port, ev_handler);
+    while (nc == NULL && s_http_port[3] != '0') {
+      LOG(WARNING) << "Cannot bind to " << s_http_port << std::endl;
+      s_http_port[3]--;
+      LOG(WARNING) << "Try " << s_http_port << std::endl;
+      nc = mg_bind(&mgr, s_http_port, ev_handler);
+    }
+    if (s_http_port[3] == '0') {
+#ifdef DEBUG_PARAM_SERV
+	    LOG(ERROR) << "failed";
+#endif
+      exit(1);
+    }
+#endif
   }
   ~ServerThread() {
     delete condition;
@@ -458,24 +475,6 @@ public:
       currentState=RUNNING;
     }
 #ifdef WITH_HTTP_PAGE
-    struct mg_mgr mgr;
-    struct mg_connection *nc;
-    cs_stat_t st;
-    mg_mgr_init(&mgr, NULL);
-    nc = mg_bind(&mgr, s_http_port, ev_handler);
-	while (nc == NULL && s_http_port[3] != '0') {
-	  LOG(WARNING) << "Cannot bind to " << s_http_port << std::endl;
-	  s_http_port[3]--;
-	  LOG(WARNING) << "Try " << s_http_port << std::endl;
-	  nc = mg_bind(&mgr, s_http_port, ev_handler);
-	}
-	if (s_http_port[3] == '0') {
-#ifdef DEBUG_PARAM_SERV
-	  LOG(ERROR) << "failed";
-#endif
-      exit(1);
-    }
-
     mg_set_protocol_http_websocket(nc);
     s_http_server_opts.document_root = TARGET_WEB_DIR_NAME;
 
@@ -546,7 +545,6 @@ public:
 
 #ifdef WITH_HTTP_PAGE
     std::string user_data = "error";
-    std::cout << "hello mutilcast" << std::endl;
     udpdiscovery::PeerParameters parameters;
     parameters.set_multicast_group_address(kMulticastAddress);
     // parameters.set_can_use_broadcast(true);
@@ -554,7 +552,7 @@ public:
     parameters.set_can_discover(true);
     parameters.set_can_be_discovered(true);
     if (parameters.can_be_discovered()) {
-      user_data = "hello";
+      user_data = s_http_port;
     }
     parameters.set_port(kPort);
     parameters.set_application_id(kApplicationId);
@@ -580,7 +578,7 @@ public:
             last_seen_user_datas.insert(std::make_pair((*it).ip_port(), (*it).user_data()));
           }
 
-          std::cout << "Discovered peers: " << discovered_peers.size() << std::endl;
+          LOG(INFO) << "Discovered peers: " << discovered_peers.size() << std::endl;
           for (std::list<udpdiscovery::DiscoveredPeer>::const_iterator it = discovered_peers.begin(); it != discovered_peers.end(); ++it) {
             std::cout << " - " << udpdiscovery::IpPortToString((*it).ip_port()) << ", " << (*it).user_data() << std::endl;
           }
@@ -607,13 +605,12 @@ public:
               last_seen_user_datas.insert(std::make_pair((*it).ip_port(), (*it).user_data()));
             }
 
-            std::cout << "Discovered peers: " << discovered_peers.size() << std::endl;
+            LOG(INFO) << "Discovered peers: " << discovered_peers.size() << std::endl;
             for (std::list<udpdiscovery::DiscoveredPeer>::const_iterator it = discovered_peers.begin(); it != discovered_peers.end(); ++it) {
               std::cout << " - " << udpdiscovery::IpPortToString((*it).ip_port()) << ", " << (*it).user_data() << std::endl;
             }
           }
         }
-
 #if defined(_WIN32)
         Sleep(500);
 #else
@@ -641,7 +638,7 @@ _index(0) {
 
   defaultConf.setGlobally(el::ConfigurationType::ToFile, "true");
   defaultConf.setGlobally(el::ConfigurationType::Filename, "param_server.log");
-  defaultConf.setGlobally(el::ConfigurationType::ToStandardOutput, "false");
+  // defaultConf.setGlobally(el::ConfigurationType::ToStandardOutput, "false");
   // default logger uses default configurations
   el::Loggers::reconfigureLogger("default", defaultConf);
   m_ServerThreadContext = std::make_shared<ServerThread>(0);
