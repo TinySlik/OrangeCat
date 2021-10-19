@@ -13,7 +13,6 @@
     <div class="content">
       <img src="cat.svg" style="float:right; height: 70px; border-radius: 2px;">
       <h1>Orange Cat Parameter Server</h1>
-      Taget Root: <input type="text" name="user" id ="root_select" />
       <fieldset>
         <legend>Device settings</legend>
         <div>
@@ -71,18 +70,6 @@
                     editor.set(json_in);
                 }
             });
-
-            $("#root_select").change(function(){
-              $.ajax({
-                url: '/set_target_root',
-                data: "code_res=" + $("#root_select").val(),
-                dataType: 'json',
-                success: function(json_in) {
-                  json_dev_ctrl = json_in;
-                  editor.set(json_in);
-                }
-              });
-            })
 
             $("#sync_btn").click(function(){
               $.ajax({

@@ -28,36 +28,21 @@
 #include "windllsupport.h"
 #define MAX_ROOT_NODE_COUNT (256)
 
-typedef  struct config_root {
-  std::string name;
-  configuru::Config config;
-} CFG_ROOT;
-
 class CLASS_DECLSPEC ParameterServer {
  private:
   explicit ParameterServer();
   ~ParameterServer() {
     stop_server();
   }
-
   std::shared_ptr<Runnable> m_ServerThreadContext;
   std::shared_ptr<Runnable> m_MutilCastThreadContext;
   std::shared_ptr<Thread> m_ServerThread;
   std::shared_ptr<Thread> m_MutilCastThread;
   configuru::Config _cfgRoot;
-  std::vector<CFG_ROOT> _root_nodes;
   configuru::Config _null;
   size_t _index;
 
  public:
-  bool CreateNewRoot(const std::string &name,
-      configuru::Config &&config = configuru::Config::object());
-  configuru::Config &GetRoot(const std::string &name) ;
-  configuru::Config &GetRootOrCreate(const std::string &name,
-      configuru::Config &&config);
-  bool RemoveRoot(const std::string &name) ;
-  bool SetCurrentRoot(const std::string &name);
-  bool SetCurrentRoot(size_t index = 0);
   configuru::Config &GetCfgStatusRoot();
   configuru::Config &GetCfgRoot();
   configuru::Config &GetCfgCtrlRoot();

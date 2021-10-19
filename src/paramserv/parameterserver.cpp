@@ -126,7 +126,7 @@ static char cache[CACHE_MAX_SIZE];
     -------------------------------------------------
  *  the second level config node such as
     cfg["first_level"]["second_level"] = "your_value" will be crush when the cfg["first_level"] is not exist as a object;
-    to solve this problem, you should use cfg.judge_or_create_key("first_level") to make sure the first level object is exist or you will create it;
+    to solve this problem, you should use cfg.judge_or_create_key("first_level") to make sure the first level object is not exist or you will create it;
 
  *  sometimes we want to use some config but not show on the web server, then we should use hiden
     cfg["target_parm_index"].set_hiden(true);
@@ -142,27 +142,13 @@ static char cache[CACHE_MAX_SIZE];
 */
 
 configuru::Config &ParameterServer::GetCfgStatusRoot() {
-  if (_root_nodes.size() == 0) {
-    _cfgRoot.judge_or_create_key("dev_status");
-    return _cfgRoot["dev_status"];
-  } else {
-    return _root_nodes[_index].config.judge_with_create_key("dev_status");
-  }
+  return _cfgRoot.judge_with_create_key("dev_status");
 }
 configuru::Config &ParameterServer::GetCfgRoot() {
-  if (_root_nodes.size() == 0) {
-    return _cfgRoot;
-  } else {
-    return _root_nodes[_index].config;
-  }
+  return _cfgRoot;
 }
 configuru::Config &ParameterServer::GetCfgCtrlRoot() {
-  if (_root_nodes.size() == 0) {
-    _cfgRoot.judge_or_create_key("dev_ctrl");
-    return _cfgRoot["dev_ctrl"];
-  } else {
-    return _root_nodes[_index].config.judge_with_create_key("dev_ctrl");
-  }
+  return _cfgRoot.judge_with_create_key("dev_ctrl");
 }
 ParameterServer *ParameterServer::instance() {
   static ParameterServer *_this = nullptr;
@@ -172,73 +158,6 @@ ParameterServer *ParameterServer::instance() {
     _this->start_server();
   }
   return _this;
-}
-
-bool ParameterServer::CreateNewRoot(const std::string &name,
-    configuru::Config &&config) {
-  if (_root_nodes.size() > MAX_ROOT_NODE_COUNT)
-        return false;
-  for (size_t i = 0; i < _root_nodes.size(); i++) {
-    if (name == _root_nodes[i].name) {
-      LOG(WARNING) << "Duplicate name index.";
-      return false;
-    }
-  }
-  _root_nodes.push_back({name, config});
-  return true;
-}
-
-bool ParameterServer::RemoveRoot(const std::string &name) {
-  for (size_t i = 0; i < _root_nodes.size(); i++) {
-    if (name == _root_nodes[i].name) {
-      LOG(INFO) << "remove root node: " << name;
-      _root_nodes.erase(_root_nodes.begin() + i);
-      return true;
-    }
-  }
-  return false;
-}
-
-configuru::Config &ParameterServer::GetRoot(const std::string &name) {
-  for (size_t i = 0; i < _root_nodes.size(); i++) {
-    if (name == _root_nodes[i].name) return  _root_nodes[i].config;
-  }
-  LOG(WARNING) << "non-existent root node index.";
-  return _null;
-}
-
-configuru::Config &ParameterServer::GetRootOrCreate(const std::string &name, configuru::Config &&config) {
-  size_t i = 0;
-  for (; i < _root_nodes.size(); i++) {
-    if (name == _root_nodes[i].name) return  _root_nodes[i].config;
-  }
-  if (_root_nodes.size() > MAX_ROOT_NODE_COUNT) return _null;
-  for (i = 0; i < _root_nodes.size(); i++) {
-    if (name == _root_nodes[i].name) {
-      LOG(WARNING) << "Duplicate name index.";
-      return _null;
-    }
-  }
-  _root_nodes.push_back({name, config});
-  return _root_nodes[i].config;
-}
-
-bool ParameterServer::SetCurrentRoot(const std::string &name) {
-  for (size_t i = 0; i < _root_nodes.size(); i++) {
-    if (name == _root_nodes[i].name) {
-      _index = i;
-      return true;
-    }
-  }
-  LOG(WARNING) << "non-existent root node index.";
-  return false;
-}
-
-bool ParameterServer::SetCurrentRoot(size_t index) {
-  if (index > _root_nodes.size()) return false;
-  if (index == _index ) return false;
-  _index = index;
-  return true;
 }
 
 static void handle_get_device_usage(struct mg_connection *nc) {
@@ -305,40 +224,6 @@ static void handle_set_dev_ctrl(struct mg_connection *nc, struct http_message *h
   mg_send_http_chunk(nc, "", 0);
 }
 
-static void handle_set_target_root(struct mg_connection *nc,struct http_message *hm) {
-  // Use chunked encoding in order to avoid calculating Content-Length
-  char * res = urlDecode(hm->message.p);
-  char *custom_head = strstr(res, "code_res=");
-  char *end =  strstr(res, "HTTP/1.1");
-
-  if (!(custom_head && end)) {
-    LOG(ERROR) << __FUNCTION__ << "error";
-    free(res);
-    mg_http_send_error(nc, 403, NULL);
-    return;
-  }
-
-  memset(cache, 0, CACHE_MAX_SIZE);
-  memcpy(cache, custom_head + 9,end - custom_head - 10);
-  free(res);
-
-  auto res_root = ParameterServer::instance()->SetCurrentRoot(cache);
-  if (res_root) {
-    auto dev_ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
-    mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
-#ifdef CONFIG_HIDEN_PARAM
-    mg_printf_http_chunk(nc, dump_string_with_hiden(dev_ctrl, JSON).c_str());
-#else
-    mg_printf_http_chunk(nc, dump_string(dev_ctrl, JSON).c_str());
-#endif
-  } else {
-    mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
-  }
-
-  // Send empty chunk, the end of response
-  mg_send_http_chunk(nc, "", 0);
-}
-
 static void handle_get_dev_ctrl(struct mg_connection *nc) {
   // Use chunked encoding in order to avoid calculating Content-Length
   mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
@@ -399,8 +284,6 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
         handle_get_dev_ctrl(nc);
       } else if (mg_vcmp(&hm->uri, "/set_dev_ctrl") == 0) {
         handle_set_dev_ctrl(nc, hm);
-      } else if (mg_vcmp(&hm->uri, "/set_target_root") == 0) {
-        handle_set_target_root(nc, hm);
 #ifdef WITH_HTTP_PAGE
       } else if (mg_vcmp(&hm->uri, "/jsonp") == 0) {
         handle_jsonp(nc, hm);
@@ -578,9 +461,9 @@ public:
             last_seen_user_datas.insert(std::make_pair((*it).ip_port(), (*it).user_data()));
           }
 
-          LOG(INFO) << "Discovered peers: " << discovered_peers.size() << std::endl;
+          LOG(INFO) << "Discovered peers: " << discovered_peers.size();
           for (std::list<udpdiscovery::DiscoveredPeer>::const_iterator it = discovered_peers.begin(); it != discovered_peers.end(); ++it) {
-            std::cout << " - " << udpdiscovery::IpPortToString((*it).ip_port()) << ", " << (*it).user_data() << std::endl;
+            LOG(INFO) << udpdiscovery::IpPortToString((*it).ip_port()) << ", " << (*it).user_data();
           }
         } else {
           bool same_user_datas = true;
@@ -605,9 +488,9 @@ public:
               last_seen_user_datas.insert(std::make_pair((*it).ip_port(), (*it).user_data()));
             }
 
-            LOG(INFO) << "Discovered peers: " << discovered_peers.size() << std::endl;
+            LOG(INFO) << "Discovered peers: " << discovered_peers.size();
             for (std::list<udpdiscovery::DiscoveredPeer>::const_iterator it = discovered_peers.begin(); it != discovered_peers.end(); ++it) {
-              std::cout << " - " << udpdiscovery::IpPortToString((*it).ip_port()) << ", " << (*it).user_data() << std::endl;
+              LOG(INFO) << udpdiscovery::IpPortToString((*it).ip_port()) << ", " << (*it).user_data();
             }
           }
         }
