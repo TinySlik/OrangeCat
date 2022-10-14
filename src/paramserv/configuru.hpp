@@ -41,17 +41,6 @@ www.github.com/emilk/configuru
 	For more info, please see README.md (at www.github.com/emilk/configuru).
 */
 
-/****************************************************************************
-**
-** Copyright (C) 2020 The ZHIZUO Company Ltd.
-**
-** This file is part of the ZHIZUO Ultrasound SDK.
-**
-** Private License
-** All right include copy change are reserved.
-**
-****************************************************************************/
-
 //  dP""b8  dP"Yb  88b 88 888888 88  dP""b8 88   88 88""Yb 88   88
 // dP   `" dP   Yb 88Yb88 88__   88 dP   `" 88   88 88__dP 88   88
 // Yb      Yb   dP 88 Y88 88""   88 Yb  "88 Y8   8P 88"Yb  Y8   8P
