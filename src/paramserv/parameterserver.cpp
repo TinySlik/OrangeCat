@@ -46,7 +46,7 @@ const unsigned int kMulticastAddress = (236 << 24) + (255 << 16) + (255 << 8) + 
 #define TARGET_WEB_DIR_NAME "../res/web_root"
 #define CONFIGURU_JSON_PARSE_ERROR_LOG ""
 #define CACHE_MAX_SIZE (128*1024)
-#define STATUS_DISPLAY_TIME_INTERVAL 1000
+#define STATUS_DISPLAY_TIME_INTERVAL 200
 #define DEBUG_PARAM_SERV
 #define CONFIG_HIDEN_PARAM
 #define WITH_HTTP_PAGE
@@ -274,9 +274,40 @@ static void handle_jsonp(struct mg_connection *nc, struct http_message *hm) {
 }
 #endif
 
+static int is_websocket(const struct mg_connection *nc) {
+  return nc->flags & MG_F_IS_WEBSOCKET;
+}
+
+static void broadcast(struct mg_connection *nc, const struct mg_str msg) {
+  struct mg_connection *c;
+  char buf[500];
+  char addr[32];
+  mg_sock_addr_to_str(&nc->sa, addr, sizeof(addr),
+                      MG_SOCK_STRINGIFY_IP | MG_SOCK_STRINGIFY_PORT);
+
+  snprintf(buf, sizeof(buf), "%s %.*s", addr, (int) msg.len, msg.p);
+  printf("%s\n", buf); /* Local echo. */
+  for (c = mg_next(nc->mgr, NULL); c != NULL; c = mg_next(nc->mgr, c)) {
+    if (c == nc) continue; /* Don't send to the sender. */
+    mg_send_websocket_frame(c, WEBSOCKET_OP_TEXT, buf, strlen(buf));
+  }
+}
+
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
   struct http_message *hm = (struct http_message *) ev_data;
   switch (ev) {
+    case MG_EV_WEBSOCKET_HANDSHAKE_DONE: {
+      /* New websocket connection. Tell everybody. */
+      broadcast(nc, mg_mk_str("++ joined"));
+      break;
+    }
+    case MG_EV_WEBSOCKET_FRAME: {
+      struct websocket_message *wm = (struct websocket_message *) ev_data;
+      /* New websocket message. Tell everybody. */
+      struct mg_str d = {(char *) wm->data, wm->size};
+      broadcast(nc, d);
+      break;
+    }
     case MG_EV_HTTP_REQUEST:
       if (mg_vcmp(&hm->uri, "/get_dev_status") == 0) {
         handle_get_device_usage(nc);
@@ -292,6 +323,13 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
         mg_serve_http(nc, hm, s_http_server_opts);  // Serve static content
       }
       break;
+    case MG_EV_CLOSE: {
+      /* Disconnect. Tell everybody. */
+      if (is_websocket(nc)) {
+        broadcast(nc, mg_mk_str("-- left"));
+      }
+      break;
+    }
     default:
       break;
   }
@@ -320,6 +358,7 @@ public:
 #ifdef WITH_HTTP_PAGE
     mg_mgr_init(&mgr, NULL);
     nc = mg_bind(&mgr, s_http_port, ev_handler);
+    mg_set_protocol_http_websocket(nc);
     while (nc == NULL && s_http_port[3] != '0') {
       LOG(WARNING) << "Cannot bind to " << s_http_port << std::endl;
       s_http_port[3]--;
@@ -360,6 +399,7 @@ public:
 #ifdef WITH_HTTP_PAGE
     mg_set_protocol_http_websocket(nc);
     s_http_server_opts.document_root = TARGET_WEB_DIR_NAME;
+    s_http_server_opts.enable_directory_listing = "yes";
 
     if (mg_stat(s_http_server_opts.document_root, &st) != 0) {
 #ifdef DEBUG_PARAM_SERV
