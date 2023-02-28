@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<html lang="en">
+  <head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="jsoneditor.min.css">
@@ -19,7 +20,7 @@
           <button id="sync_btn" width=200>Sync Settings</button>
           <button id="save_btn" width=200>Save Settings</button>
         </div>
-        <div id="jsoneditor" style="width: 820px; height: 1000px;"></div>
+        <div id="jsoneditor" style="width: 820px; height: 500px;"></div>
         <script>
             setInterval(function() {
               $.ajax({
@@ -105,7 +106,19 @@
       <fieldset>
         <legend>Device status</legend>
           <div id="dev_status"></div>
-      </div>
-    </fieldset>
+      </fieldset>
+      <fieldset>
+        <legend>Cam Data</legend>
+          <!-- 主要逻辑在这个js里面 -->
+        <script src="./video.js"></script>
+        <div>
+          <button onclick="start()">开始</button>
+        </div>
     
+        <br>
+        <div>
+            <img src="./cat.svg" id="Camera" alt="Cam" style="text-align:left; width: 640px; height: 480px;"> 
+        </div>
+      </fieldset>
+    </div>
   </body></html>

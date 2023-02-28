@@ -527,8 +527,8 @@ _index(0) {
   m_ServerThreadContext = std::make_shared<ServerThread>(0);
   m_ServerThread = std::make_shared<Thread>(m_ServerThreadContext);
 
-  m_MutilCastThreadContext = std::make_shared<MutilCastThread>(0);
-  m_MutilCastThread = std::make_shared<Thread>(m_MutilCastThreadContext);
+  // m_MutilCastThreadContext = std::make_shared<MutilCastThread>(0);
+  // m_MutilCastThread = std::make_shared<Thread>(m_MutilCastThreadContext);
 #ifdef WITH_HTTP_PAGE
   debug_ = true;
 #else
@@ -538,12 +538,12 @@ _index(0) {
 
 void ParameterServer::stop_server() {
   m_ServerThreadContext->stop();
-  m_MutilCastThreadContext->stop();
+  // m_MutilCastThreadContext->stop();
 }
 
 void ParameterServer::start_server() {
   m_ServerThread->start();
-  m_MutilCastThread->start();
+  // m_MutilCastThread->start();
 }
 
 void ParameterServer::init() {
