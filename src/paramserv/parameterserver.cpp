@@ -24,6 +24,9 @@
 #include "udp_discovery_peer.hpp"
 #include <iostream>
 #include <string>
+#define LOADBMP_IMPLEMENTATION
+#include "loadbmp.h"
+
 
 
 #include <string.h>
@@ -57,6 +60,10 @@ using namespace configuru;
 static char s_http_port[] = "8099";
 static struct mg_serve_http_opts s_http_server_opts;
 static char cache[CACHE_MAX_SIZE];
+bool _thread_stop = false;
+
+unsigned char *pixels = NULL;
+unsigned int width, height;
 
 // EASY README
 /* exp ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -278,6 +285,8 @@ static int is_websocket(const struct mg_connection *nc) {
   return nc->flags & MG_F_IS_WEBSOCKET;
 }
 
+std::vector<struct mg_connection *> ncs = {nullptr};
+
 static void broadcast(struct mg_connection *nc, const struct mg_str msg) {
   struct mg_connection *c;
   char buf[500];
@@ -293,19 +302,49 @@ static void broadcast(struct mg_connection *nc, const struct mg_str msg) {
   }
 }
 
+static void broadcast(const struct mg_str msg) {
+  // struct mg_connection *c;
+  char buf[500];
+  char addr[32];
+   /* Local echo. */
+
+  for (size_t i = 1; i < ncs.size(); i++) {
+    mg_sock_addr_to_str(&ncs[i]->sa, addr, sizeof(addr),
+                      MG_SOCK_STRINGIFY_IP | MG_SOCK_STRINGIFY_PORT);
+    snprintf(buf, sizeof(buf), "%s %.*s", addr, (int) msg.len, msg.p);
+    // printf("%s\n", buf);
+    mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_TEXT, buf, strlen(buf));
+  }
+}
+
+static void broadcast(unsigned char *buf, size_t len) {
+  // struct mg_connection *c;
+  // char buf[500];
+  char addr[32];
+   /* Local echo. */
+
+  for (size_t i = 1; i < ncs.size(); i++) {
+    // mg_sock_addr_to_str(&ncs[i]->sa, addr, sizeof(addr),
+    //                   MG_SOCK_STRINGIFY_IP | MG_SOCK_STRINGIFY_PORT);
+    // snprintf(buf, sizeof(buf), "%s %.*s", addr, (int) msg.len, msg.p);
+    // printf("%s\n", buf);
+    mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, buf, len);
+  }
+}
+
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
   struct http_message *hm = (struct http_message *) ev_data;
   switch (ev) {
     case MG_EV_WEBSOCKET_HANDSHAKE_DONE: {
       /* New websocket connection. Tell everybody. */
-      broadcast(nc, mg_mk_str("++ joined"));
+      ncs.push_back(nc);
       break;
     }
     case MG_EV_WEBSOCKET_FRAME: {
       struct websocket_message *wm = (struct websocket_message *) ev_data;
       /* New websocket message. Tell everybody. */
-      struct mg_str d = {(char *) wm->data, wm->size};
-      broadcast(nc, d);
+      // struct mg_str d = {(char *) wm->data, wm->size};
+      // broadcast(nc, d);
       break;
     }
     case MG_EV_HTTP_REQUEST:
@@ -326,6 +365,11 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
     case MG_EV_CLOSE: {
       /* Disconnect. Tell everybody. */
       if (is_websocket(nc)) {
+        for (size_t i = 0; i < ncs.size(); i++) {
+          if(ncs[i] == nc) {
+            ncs.erase(ncs.begin() + i);
+          }
+        }
         broadcast(nc, mg_mk_str("-- left"));
       }
       break;
@@ -555,7 +599,17 @@ m_ServerThreadContext(nullptr),
 m_ServerThread(nullptr),
 m_MutilCastThreadContext(nullptr),
 m_MutilCastThread(nullptr),
-_index(0) {
+_index(0),
+th_websocket_bro(std::thread([]() {
+  unsigned int err = loadbmp_decode_file("dig10k_penguin.bmp", &pixels, &width, &height, LOADBMP_RGBA);
+    if (err) printf("LoadBMP Load Error: %u\n", err);
+    LOG(INFO) << "Size: " << width << " || " << height;
+    while (ncs.size() > 0) {
+      // broadcast(mg_mk_str((char *) pixels));
+      broadcast(pixels, 4096);
+      usleep(1000);
+    }
+  })) {
   el::Configurations defaultConf;
   defaultConf.setToDefault();
 
@@ -564,9 +618,9 @@ _index(0) {
   // defaultConf.setGlobally(el::ConfigurationType::ToStandardOutput, "false");
   // default logger uses default configurations
   el::Loggers::reconfigureLogger("default", defaultConf);
+
   m_ServerThreadContext = std::make_shared<ServerThread>(0);
   m_ServerThread = std::make_shared<Thread>(m_ServerThreadContext);
-
   // m_MutilCastThreadContext = std::make_shared<MutilCastThread>(0);
   // m_MutilCastThread = std::make_shared<Thread>(m_MutilCastThreadContext);
 #ifdef WITH_HTTP_PAGE
@@ -578,6 +632,10 @@ _index(0) {
 
 void ParameterServer::stop_server() {
   m_ServerThreadContext->stop();
+  ncs.clear();
+  th_websocket_bro.join();
+  // Remember to free the pixel data when it isn't needed anymore.
+  free(pixels);
   // m_MutilCastThreadContext->stop();
 }
 

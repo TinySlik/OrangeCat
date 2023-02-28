@@ -8,7 +8,6 @@ function connecteClient() {
 
     // 连接建立后的回调函数
     ws.onopen = function () {
-        
         console.log("WebSocket 连接成功");
     };
 
@@ -16,7 +15,7 @@ function connecteClient() {
     ws.onmessage = function (evt) {
         var received_msg = evt.data;
         //console.log("输出的内容" + received_msg);
-        alert(result);
+        // alert(result);
         // blob格式再转换为base64格式
         blobToDataURI(received_msg, function (result) {
             document.getElementById("Camera").src = result;
@@ -31,10 +30,13 @@ function connecteClient() {
 }
 
 // blob格式转换为base64格式
-function blobToDataURI(blob, callback) {
-    var reader = new FileReader();
-    reader.readAsDataURL(blob);
-    reader.onload = function (e) {
-        callback(e.target.result);
-    }
+function blobToDataURI(data, callback) {
+    // var reader = new FileReader();
+    // reader.readAsDataURL(blob);
+    // reader.readAsText(blob);
+    console.log(data);
+    // reader.onload = function (e) {
+    //     callback(e.target.result);
+    // }
+    callback(data);
 }
