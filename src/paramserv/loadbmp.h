@@ -68,11 +68,9 @@ extern "C" {
 #	define LOADBMP_API extern
 #endif
 
-
 // LoadBMP uses raw buffers and support RGB and RGBA formats.
 // The order is RGBRGBRGB... or RGBARGBARGBA..., from top left
 // to bottom right, without any padding.
-
 
 LOADBMP_API unsigned int loadbmp_decode_file(
 	const char *filename, unsigned char **imageData, unsigned int *width, unsigned int *height, unsigned int components);

@@ -49,7 +49,7 @@ const unsigned int kMulticastAddress = (236 << 24) + (255 << 16) + (255 << 8) + 
 #define TARGET_WEB_DIR_NAME "../res/web_root"
 #define CONFIGURU_JSON_PARSE_ERROR_LOG ""
 #define CACHE_MAX_SIZE (128*1024)
-#define STATUS_DISPLAY_TIME_INTERVAL 200
+#define STATUS_DISPLAY_TIME_INTERVAL 100
 #define DEBUG_PARAM_SERV
 #define CONFIG_HIDEN_PARAM
 #define WITH_HTTP_PAGE
@@ -318,16 +318,9 @@ static void broadcast(const struct mg_str msg) {
 }
 
 static void broadcast(unsigned char *buf, size_t len) {
-  // struct mg_connection *c;
-  // char buf[500];
   char addr[32];
    /* Local echo. */
-
   for (size_t i = 1; i < ncs.size(); i++) {
-    // mg_sock_addr_to_str(&ncs[i]->sa, addr, sizeof(addr),
-    //                   MG_SOCK_STRINGIFY_IP | MG_SOCK_STRINGIFY_PORT);
-    // snprintf(buf, sizeof(buf), "%s %.*s", addr, (int) msg.len, msg.p);
-    // printf("%s\n", buf);
     mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, buf, len);
   }
 }
@@ -458,8 +451,15 @@ public:
 #ifdef DEBUG_PARAM_SERV
     LOG(INFO) << "Starting web server on port " << s_http_port << std::endl;
 #endif
+    unsigned int err = loadbmp_decode_file("bmp_22.bmp", &pixels, &width, &height, LOADBMP_RGBA);
+    if (err) printf("LoadBMP Load Error: %u\n", err);
+    LOG(INFO) << "Size: " << width << " || " << height;
     while (requestedState!=STOP) {
+      // _data_lock.lock();
+      broadcast(pixels, width * height * 3);
       mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
+      // _data_lock.unlock();
+      // usleep(1000);
     }
     currentState=STOP;
     mg_mgr_free(&mgr);
@@ -599,17 +599,7 @@ m_ServerThreadContext(nullptr),
 m_ServerThread(nullptr),
 m_MutilCastThreadContext(nullptr),
 m_MutilCastThread(nullptr),
-_index(0),
-th_websocket_bro(std::thread([]() {
-  unsigned int err = loadbmp_decode_file("dig10k_penguin.bmp", &pixels, &width, &height, LOADBMP_RGBA);
-    if (err) printf("LoadBMP Load Error: %u\n", err);
-    LOG(INFO) << "Size: " << width << " || " << height;
-    while (ncs.size() > 0) {
-      // broadcast(mg_mk_str((char *) pixels));
-      broadcast(pixels, 4096);
-      usleep(1000);
-    }
-  })) {
+_index(0) {
   el::Configurations defaultConf;
   defaultConf.setToDefault();
 
@@ -633,7 +623,6 @@ th_websocket_bro(std::thread([]() {
 void ParameterServer::stop_server() {
   m_ServerThreadContext->stop();
   ncs.clear();
-  th_websocket_bro.join();
   // Remember to free the pixel data when it isn't needed anymore.
   free(pixels);
   // m_MutilCastThreadContext->stop();

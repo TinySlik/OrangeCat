@@ -26,6 +26,7 @@
 #include <atomic>
 #include <iostream>
 #include "windllsupport.h"
+#include <mutex>
 #define MAX_ROOT_NODE_COUNT (256)
 
 class CLASS_DECLSPEC ParameterServer {
@@ -41,7 +42,6 @@ class CLASS_DECLSPEC ParameterServer {
   configuru::Config _cfgRoot;
   configuru::Config _null;
   size_t _index;
-  std::thread th_websocket_bro;
 
  public:
   configuru::Config &GetCfgStatusRoot();
