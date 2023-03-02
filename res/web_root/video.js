@@ -34,7 +34,7 @@ function blobToDataURI(data, callback) {
     // var reader = new FileReader();
     // reader.readAsDataURL(blob);
     // reader.readAsText(blob);
-    console.log(data);
+    // console.log(data.size);
     // reader.onload = function (e) {
     //     callback(e.target.result);
     // }

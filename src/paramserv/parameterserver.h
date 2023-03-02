@@ -36,9 +36,7 @@ class CLASS_DECLSPEC ParameterServer {
     stop_server();
   }
   std::shared_ptr<Runnable> m_ServerThreadContext;
-  std::shared_ptr<Runnable> m_MutilCastThreadContext;
   std::shared_ptr<Thread> m_ServerThread;
-  std::shared_ptr<Thread> m_MutilCastThread;
   configuru::Config _cfgRoot;
   configuru::Config _null;
   size_t _index;

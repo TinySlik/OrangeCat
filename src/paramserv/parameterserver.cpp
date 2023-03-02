@@ -21,18 +21,15 @@
 #include <thread>
 #include <chrono>
 #include "easylogging++.h"
-#include "udp_discovery_peer.hpp"
+#include "base64/include/libbase64.h"
 #include <iostream>
 #include <string>
 #define LOADBMP_IMPLEMENTATION
 #include "loadbmp.h"
 
-
-
 #include <string.h>
 #include <map>
 #include <iostream>
-#include "udp_discovery_peer.hpp"
 
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
@@ -455,11 +452,8 @@ public:
     if (err) printf("LoadBMP Load Error: %u\n", err);
     LOG(INFO) << "Size: " << width << " || " << height;
     while (requestedState!=STOP) {
-      // _data_lock.lock();
-      broadcast(pixels, width * height * 3);
+      broadcast(pixels, width * height * 3  /* RGB */ );
       mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
-      // _data_lock.unlock();
-      // usleep(1000);
     }
     currentState=STOP;
     mg_mgr_free(&mgr);
@@ -473,132 +467,10 @@ public:
   }
 };
 
-class MutilCastThread : public Runnable {
-private:
-  std::mutex mmutex;
-  Condition *condition;
-  ThreadState requestedState=INIT;
-  ThreadState currentState=INIT;
-  int id;
-
-public:
-  MutilCastThread(int id) {
-    this->id=id;
-    condition=new Condition(mmutex);
-  }
-  ~MutilCastThread() {
-    delete condition;
-  }
-  int getId() {
-    return id;
-  }
-  void setState(ThreadState nState) {
-    {
-    Synchronized x(mmutex);
-    requestedState=nState;
-    condition->notifyAll(x);
-    }
-  };
-  ThreadState getState() {
-    Synchronized x(mmutex);
-    return currentState;
-  };
-
-  virtual void run() {
-    {
-      Synchronized x(mmutex);
-      currentState=RUNNING;
-    }
-
-#ifdef WITH_HTTP_PAGE
-    std::string user_data = "error";
-    udpdiscovery::PeerParameters parameters;
-    parameters.set_multicast_group_address(kMulticastAddress);
-    // parameters.set_can_use_broadcast(true);
-    parameters.set_can_use_multicast(true);
-    parameters.set_can_discover(true);
-    parameters.set_can_be_discovered(true);
-    if (parameters.can_be_discovered()) {
-      user_data = s_http_port;
-    }
-    parameters.set_port(kPort);
-    parameters.set_application_id(kApplicationId);
-
-    udpdiscovery::Peer peer;
-    if (!peer.Start(parameters, user_data)) {
-#ifdef DEBUG_PARAM_SERV
-      LOG(ERROR) << "MutilCast initial failed.";
-#endif
-      return;
-    }
-    std::list<udpdiscovery::DiscoveredPeer> discovered_peers;
-    std::map<udpdiscovery::IpPort, std::string> last_seen_user_datas;
-
-    while (true) {
-      if (parameters.can_discover()) {
-        std::list<udpdiscovery::DiscoveredPeer> new_discovered_peers = peer.ListDiscovered();
-        if (!udpdiscovery::Same(parameters.same_peer_mode(), discovered_peers, new_discovered_peers)) {
-          discovered_peers = new_discovered_peers;
-
-          last_seen_user_datas.clear();
-          for (std::list<udpdiscovery::DiscoveredPeer>::const_iterator it = discovered_peers.begin(); it != discovered_peers.end(); ++it) {
-            last_seen_user_datas.insert(std::make_pair((*it).ip_port(), (*it).user_data()));
-          }
-
-          LOG(INFO) << "Discovered peers: " << discovered_peers.size();
-          for (std::list<udpdiscovery::DiscoveredPeer>::const_iterator it = discovered_peers.begin(); it != discovered_peers.end(); ++it) {
-            LOG(INFO) << udpdiscovery::IpPortToString((*it).ip_port()) << ", " << (*it).user_data();
-          }
-        } else {
-          bool same_user_datas = true;
-          for (std::list<udpdiscovery::DiscoveredPeer>::const_iterator it = new_discovered_peers.begin(); it != new_discovered_peers.end(); ++it) {
-            std::map<udpdiscovery::IpPort, std::string>::const_iterator find_it = last_seen_user_datas.find((*it).ip_port());
-            if (find_it != last_seen_user_datas.end()) {
-              if ((*find_it).second != (*it).user_data()) {
-                same_user_datas = false;
-                break;
-              }
-            } else {
-              same_user_datas = false;
-              break;
-            }
-          }
-
-          if (!same_user_datas) {
-            discovered_peers = new_discovered_peers;
-
-            last_seen_user_datas.clear();
-            for (std::list<udpdiscovery::DiscoveredPeer>::const_iterator it = discovered_peers.begin(); it != discovered_peers.end(); ++it) {
-              last_seen_user_datas.insert(std::make_pair((*it).ip_port(), (*it).user_data()));
-            }
-
-            LOG(INFO) << "Discovered peers: " << discovered_peers.size();
-            for (std::list<udpdiscovery::DiscoveredPeer>::const_iterator it = discovered_peers.begin(); it != discovered_peers.end(); ++it) {
-              LOG(INFO) << udpdiscovery::IpPortToString((*it).ip_port()) << ", " << (*it).user_data();
-            }
-          }
-        }
-#if defined(_WIN32)
-        Sleep(500);
-#else
-        usleep(500000);
-#endif
-      }
-    }
-#endif
-  }
-
-  virtual void stop() {
-    requestedState=STOP;
-    currentState=STOP;
-  }
-};
 
 ParameterServer::ParameterServer() :
 m_ServerThreadContext(nullptr),
 m_ServerThread(nullptr),
-m_MutilCastThreadContext(nullptr),
-m_MutilCastThread(nullptr),
 _index(0) {
   el::Configurations defaultConf;
   defaultConf.setToDefault();
@@ -623,14 +495,11 @@ _index(0) {
 void ParameterServer::stop_server() {
   m_ServerThreadContext->stop();
   ncs.clear();
-  // Remember to free the pixel data when it isn't needed anymore.
   free(pixels);
-  // m_MutilCastThreadContext->stop();
 }
 
 void ParameterServer::start_server() {
   m_ServerThread->start();
-  // m_MutilCastThread->start();
 }
 
 void ParameterServer::init() {
