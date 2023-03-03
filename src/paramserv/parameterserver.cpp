@@ -435,7 +435,7 @@ public:
     LOG(INFO) << "Starting web server on port " << s_http_port << std::endl;
 #endif
     std::ifstream read_file;
-    read_file.open("bmp_22.bmp");
+    read_file.open("../res/dig10k_penguin.bmp");
     // std::vector<char> data_(1024 * 1024 * 10);
     // char *p = data_.data();
     // memset(data_.data(), 0, data_.size());

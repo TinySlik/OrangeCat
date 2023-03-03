@@ -18,7 +18,6 @@ function connecteClient() {
         // alert(result);
         // blob格式再转换为base64格式
         blobToDataURI(received_msg, function (result) {
-            console.log(result);
             document.getElementById("Camera").src = result;
         })
     };
