@@ -18,6 +18,7 @@ function connecteClient() {
         // alert(result);
         // blob格式再转换为base64格式
         blobToDataURI(received_msg, function (result) {
+            console.log(result);
             document.getElementById("Camera").src = result;
         })
     };
@@ -29,14 +30,16 @@ function connecteClient() {
     }; 
 }
 
+function blobToFile(blob, fileName, type) {  //blob转file
+    let files = new window.File([blob], fileName, {type: type})
+    return files
+}
+
 // blob格式转换为base64格式
-function blobToDataURI(data, callback) {
-    // var reader = new FileReader();
-    // reader.readAsDataURL(blob);
-    // reader.readAsText(blob);
-    // console.log(data.size);
-    // reader.onload = function (e) {
-    //     callback(e.target.result);
-    // }
-    callback(data);
+function blobToDataURI(blob, callback) {
+    var reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onload = function (e) {
+        callback(e.target.result.replace("data:application/octet-stream", "data:image/bmp"));
+    }
 }

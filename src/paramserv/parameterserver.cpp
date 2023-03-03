@@ -20,8 +20,10 @@
 #define ELPP_FORCE_USE_STD_THREAD
 #include <thread>
 #include <chrono>
+#include <fstream>
+#include <iostream>
+#include <string>
 #include "easylogging++.h"
-#include "base64/include/libbase64.h"
 #include <iostream>
 #include <string>
 #define LOADBMP_IMPLEMENTATION
@@ -299,23 +301,7 @@ static void broadcast(struct mg_connection *nc, const struct mg_str msg) {
   }
 }
 
-static void broadcast(const struct mg_str msg) {
-  // struct mg_connection *c;
-  char buf[500];
-  char addr[32];
-   /* Local echo. */
-
-  for (size_t i = 1; i < ncs.size(); i++) {
-    mg_sock_addr_to_str(&ncs[i]->sa, addr, sizeof(addr),
-                      MG_SOCK_STRINGIFY_IP | MG_SOCK_STRINGIFY_PORT);
-    snprintf(buf, sizeof(buf), "%s %.*s", addr, (int) msg.len, msg.p);
-    // printf("%s\n", buf);
-    mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_TEXT, buf, strlen(buf));
-  }
-}
-
-static void broadcast(unsigned char *buf, size_t len) {
-  char addr[32];
+static void broadcast(const char *buf, size_t len) {
    /* Local echo. */
   for (size_t i = 1; i < ncs.size(); i++) {
     mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, buf, len);
@@ -448,11 +434,25 @@ public:
 #ifdef DEBUG_PARAM_SERV
     LOG(INFO) << "Starting web server on port " << s_http_port << std::endl;
 #endif
-    unsigned int err = loadbmp_decode_file("bmp_22.bmp", &pixels, &width, &height, LOADBMP_RGBA);
-    if (err) printf("LoadBMP Load Error: %u\n", err);
-    LOG(INFO) << "Size: " << width << " || " << height;
+    std::ifstream read_file;
+    read_file.open("bmp_22.bmp");
+    // std::vector<char> data_(1024 * 1024 * 10);
+    // char *p = data_.data();
+    // memset(data_.data(), 0, data_.size());
+    long sz = 0;
+    std::string content = "";
+    if (read_file.is_open()) {
+      // char c;
+     std::string tmp;
+      while (getline(read_file, tmp)) {
+        content += tmp;
+      }
+      read_file.close();
+    }
+    LOG(INFO) << "size:" << content.size();
+    const char * ctmp = content.data();
     while (requestedState!=STOP) {
-      broadcast(pixels, width * height * 3  /* RGB */ );
+      broadcast(ctmp, content.size());
       mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
     }
     currentState=STOP;
