@@ -27,30 +27,29 @@
 #include <iostream>
 #include "windllsupport.h"
 #include <mutex>
+#include <memory>
 #define MAX_ROOT_NODE_COUNT (256)
 
-class CLASS_DECLSPEC ParameterServer {
- private:
+class CLASS_DECLSPEC ParameterServer : public std::enable_shared_from_this<ParameterServer> {
   explicit ParameterServer();
-  ~ParameterServer() {
-    stop_server();
-  }
   std::shared_ptr<Runnable> m_ServerThreadContext;
   std::shared_ptr<Thread> m_ServerThread;
   configuru::Config _cfgRoot;
   configuru::Config _null;
   size_t _index;
+  void startServer();
+  void stopServer();
+  bool debug_;
 
  public:
-  configuru::Config &GetCfgStatusRoot();
-  configuru::Config &GetCfgRoot();
-  configuru::Config &GetCfgCtrlRoot();
+  ~ParameterServer();
+  configuru::Config &getCfgStatusRoot();
+  configuru::Config &getCfgRoot();
+  configuru::Config &getCfgCtrlRoot();
   static ParameterServer *instance();
-  inline bool is_debug() {return debug_;}
+  inline bool isDebug() {return debug_;}
   void init();
-  void start_server();
-  void stop_server();
-  bool debug_;
+  std::shared_ptr<ParameterServer> create();
 };
 
 #endif // PARAMETERSERVER_H

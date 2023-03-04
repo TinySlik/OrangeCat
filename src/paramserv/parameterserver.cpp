@@ -145,13 +145,13 @@ unsigned int width, height;
 *exp ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-configuru::Config &ParameterServer::GetCfgStatusRoot() {
+configuru::Config &ParameterServer::getCfgStatusRoot() {
   return _cfgRoot.judge_with_create_key("dev_status");
 }
-configuru::Config &ParameterServer::GetCfgRoot() {
+configuru::Config &ParameterServer::getCfgRoot() {
   return _cfgRoot;
 }
-configuru::Config &ParameterServer::GetCfgCtrlRoot() {
+configuru::Config &ParameterServer::getCfgCtrlRoot() {
   return _cfgRoot.judge_with_create_key("dev_ctrl");
 }
 ParameterServer *ParameterServer::instance() {
@@ -159,7 +159,7 @@ ParameterServer *ParameterServer::instance() {
   if (_this == nullptr) {
     _this = new ParameterServer;
     _this->init();
-    _this->start_server();
+    _this->startServer();
   }
   return _this;
 }
@@ -168,7 +168,7 @@ static void handle_get_device_usage(struct mg_connection *nc) {
   // Use chunked encoding in order to avoid calculating Content-Length
   mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
 
-  auto cfg = ParameterServer::instance()->GetCfgRoot();
+  auto cfg = ParameterServer::instance()->getCfgRoot();
   uint64_t mem = 0, vmem = 0, r = 0, w = 0;
   if (cfg.has_key("dev_status") &&
     cfg["dev_status"].is_object()) {
@@ -205,7 +205,7 @@ static void handle_set_dev_ctrl(struct mg_connection *nc, struct http_message *h
   free(res);
 
   auto config_in = parse_string(cache, JSON, CONFIGURU_JSON_PARSE_ERROR_LOG);
-  auto dev_ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
+  auto dev_ctrl = ParameterServer::instance()->getCfgCtrlRoot();
 
   mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
   if (Config::deep_async(dev_ctrl, config_in)) {
@@ -227,7 +227,7 @@ static void handle_get_dev_ctrl(struct mg_connection *nc) {
   // Use chunked encoding in order to avoid calculating Content-Length
   mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
 
-  auto dev_ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
+  auto dev_ctrl = ParameterServer::instance()->getCfgCtrlRoot();
 #ifdef CONFIG_HIDEN_PARAM
   mg_printf_http_chunk(nc, dump_string_with_hiden(dev_ctrl, JSON).c_str());
 #else
@@ -260,7 +260,7 @@ static void handle_jsonp(struct mg_connection *nc, struct http_message *hm) {
   // Use chunked encoding in order to avoid calculating Content-Length
   mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
 
-  auto dev_ctrl = ParameterServer::instance()->GetCfgCtrlRoot();
+  auto dev_ctrl = ParameterServer::instance()->getCfgCtrlRoot();
   std::string og = "fn(";
 #ifdef CONFIG_HIDEN_PARAM
   mg_printf_http_chunk(nc, ( og + dump_string_with_hiden(dev_ctrl, JSON) + ")") .c_str());
@@ -467,7 +467,6 @@ m_ServerThread(nullptr),
 _index(0) {
   el::Configurations defaultConf;
   defaultConf.setToDefault();
-
   defaultConf.setGlobally(el::ConfigurationType::ToFile, "true");
   defaultConf.setGlobally(el::ConfigurationType::Filename, "param_server.log");
   // defaultConf.setGlobally(el::ConfigurationType::ToStandardOutput, "false");
@@ -485,16 +484,24 @@ _index(0) {
 #endif
 }
 
-void ParameterServer::stop_server() {
+ParameterServer::~ParameterServer() {
+  stopServer();
+}
+
+void ParameterServer::stopServer() {
   m_ServerThreadContext->stop();
   ncs.clear();
   free(pixels);
 }
 
-void ParameterServer::start_server() {
+void ParameterServer::startServer() {
   m_ServerThread->start();
 }
 
 void ParameterServer::init() {
   _cfgRoot = Config::object();
+}
+
+std::shared_ptr<ParameterServer> ParameterServer::create() {
+  return nullptr;
 }
