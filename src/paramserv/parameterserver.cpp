@@ -26,8 +26,6 @@
 #include "easylogging++.h"
 #include <iostream>
 #include <string>
-#define LOADBMP_IMPLEMENTATION
-#include "loadbmp.h"
 
 #include <string.h>
 #include <map>
@@ -172,11 +170,6 @@ static void handle_get_device_usage(struct mg_connection *nc) {
 
   auto cfg = ParameterServer::instance()->GetCfgRoot();
   uint64_t mem = 0, vmem = 0, r = 0, w = 0;
-
-  //  cpu = get_cpu_usage();
-  //  get_memory_usage(&mem, &vmem);
-  //  get_io_bytes(&r, &w);
-
   if (cfg.has_key("dev_status") &&
     cfg["dev_status"].is_object()) {
   } else {
