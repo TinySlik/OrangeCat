@@ -38,10 +38,6 @@
 #include <unistd.h>
 #endif
 
-const int kPort = 12021;
-const uint64_t kApplicationId = 7681412;
-const unsigned int kMulticastAddress = (236 << 24) + (255 << 16) + (255 << 8) + 123; // 236.255.255.123
-
 #define CONFIGURU_IMPLEMENTATION 1
 #define TARGET_WEB_DIR_NAME "../res/web_root"
 #define CONFIGURU_JSON_PARSE_ERROR_LOG ""
@@ -469,14 +465,10 @@ _index(0) {
   defaultConf.setToDefault();
   defaultConf.setGlobally(el::ConfigurationType::ToFile, "true");
   defaultConf.setGlobally(el::ConfigurationType::Filename, "param_server.log");
-  // defaultConf.setGlobally(el::ConfigurationType::ToStandardOutput, "false");
-  // default logger uses default configurations
   el::Loggers::reconfigureLogger("default", defaultConf);
 
   m_ServerThreadContext = std::make_shared<ServerThread>(0);
   m_ServerThread = std::make_shared<Thread>(m_ServerThreadContext);
-  // m_MutilCastThreadContext = std::make_shared<MutilCastThread>(0);
-  // m_MutilCastThread = std::make_shared<Thread>(m_MutilCastThreadContext);
 #ifdef WITH_HTTP_PAGE
   debug_ = true;
 #else
@@ -502,6 +494,6 @@ void ParameterServer::init() {
   _cfgRoot = Config::object();
 }
 
-std::shared_ptr<ParameterServer> ParameterServer::create() {
+std::shared_ptr<ParameterServer> ParameterServer::create(const std::string &port) {
   return nullptr;
 }

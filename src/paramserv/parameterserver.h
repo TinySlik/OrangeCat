@@ -49,7 +49,7 @@ class CLASS_DECLSPEC ParameterServer : public std::enable_shared_from_this<Param
   static ParameterServer *instance();
   inline bool isDebug() {return debug_;}
   void init();
-  std::shared_ptr<ParameterServer> create();
+  std::shared_ptr<ParameterServer> create(const std::string &port);
 };
 
 #endif // PARAMETERSERVER_H
