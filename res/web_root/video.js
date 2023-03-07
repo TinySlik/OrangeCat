@@ -1,3 +1,6 @@
+// var camDataPath = "./cat.svg"
+var camData = "./cat.svg"
+
 function start() {
     connecteClient();
 }
@@ -15,6 +18,7 @@ function connecteClient() {
     ws.onmessage = function (evt) {
         var received_msg = evt.data;
         blobToDataURI(received_msg, function (result) {
+            camData = result;
             document.getElementById("Camera").src = result;
         })
     };
