@@ -467,7 +467,6 @@ public:
   }
 };
 
-
 ParameterServer::ParameterServer() :
 m_ServerThreadContext(nullptr),
 m_ServerThread(nullptr),
@@ -489,16 +488,16 @@ _index(0) {
 
 ParameterServer::~ParameterServer() {
   stopServer();
-}
-
-void ParameterServer::stopServer() {
-  m_ServerThreadContext->stop();
   ncs.clear();
   free(pixels);
 }
 
+void ParameterServer::stopServer() {
+  // m_ServerThreadContext->stop();
+}
+
 void ParameterServer::startServer() {
-  m_ServerThread->start();
+  // m_ServerThread->start();
 }
 
 void ParameterServer::init() {
