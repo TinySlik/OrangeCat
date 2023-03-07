@@ -57,6 +57,7 @@ bool _thread_stop = false;
 
 unsigned char *pixels = NULL;
 unsigned int width, height;
+int instance_or_mutil = 0;
 
 // EASY README
 /* exp ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -151,6 +152,16 @@ configuru::Config &ParameterServer::getCfgCtrlRoot() {
   return _cfgRoot.judge_with_create_key("dev_ctrl");
 }
 ParameterServer *ParameterServer::instance() {
+  
+  if (instance_or_mutil == 0) {
+    instance_or_mutil = 1;
+  } else if (instance_or_mutil == 1) {
+    //
+  } else {
+    LOG(ERROR) << "instance_or_mutil error.";
+    return nullptr;
+  }
+
   static ParameterServer *_this = nullptr;
   if (_this == nullptr) {
     _this = new ParameterServer;
@@ -389,11 +400,9 @@ public:
     return id;
   }
   void setState(ThreadState nState) {
-    {
     Synchronized x(mmutex);
     requestedState=nState;
     condition->notifyAll(x);
-    }
   };
   ThreadState getState() {
     Synchronized x(mmutex);
@@ -496,7 +505,19 @@ void ParameterServer::init() {
   _cfgRoot = Config::object();
 }
 
-std::shared_ptr<ParameterServer> ParameterServer::create(const std::string &port) {
+ParameterServer::ParameterServer(const std::string &port) {
   LOG(INFO) << port;
-  return nullptr;
+}
+
+std::shared_ptr<ParameterServer> ParameterServer::create(const std::string &port) {
+  if (instance_or_mutil == 0) {
+    instance_or_mutil = 2;
+  } else if (instance_or_mutil == 2) {
+    //
+  } else {
+    LOG(ERROR) << "instance_or_mutil error.";
+    return nullptr;
+  }
+  LOG(INFO) << port;
+  return std::make_shared<ParameterServer>(port);
 }
