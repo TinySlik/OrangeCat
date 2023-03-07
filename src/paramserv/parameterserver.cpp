@@ -165,7 +165,7 @@ static void handle_get_device_usage(struct mg_connection *nc) {
   mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
 
   auto cfg = ParameterServer::instance()->getCfgRoot();
-  uint64_t mem = 0, vmem = 0, r = 0, w = 0;
+  // uint64_t mem = 0, vmem = 0, r = 0, w = 0;
   if (cfg.has_key("dev_status") &&
     cfg["dev_status"].is_object()) {
   } else {
@@ -306,7 +306,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
       break;
     }
     case MG_EV_WEBSOCKET_FRAME: {
-      struct websocket_message *wm = (struct websocket_message *) ev_data;
+      // struct websocket_message *wm = (struct websocket_message *) ev_data;
       /* New websocket message. Tell everybody. */
       // struct mg_str d = {(char *) wm->data, wm->size};
       // broadcast(nc, d);
@@ -437,11 +437,13 @@ public:
         content += tmp;
       }
       read_file.close();
+      sz = content.size();
+      LOG(INFO) << "test data file size:" << sz;
     }
-    LOG(INFO) << "size:" << content.size();
+    
     const char * ctmp = content.data();
     while (requestedState!=STOP) {
-      broadcast(ctmp, content.size());
+      if (sz > 0) broadcast(ctmp, sz);
       mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
     }
     currentState=STOP;
@@ -495,5 +497,6 @@ void ParameterServer::init() {
 }
 
 std::shared_ptr<ParameterServer> ParameterServer::create(const std::string &port) {
+  LOG(INFO) << port;
   return nullptr;
 }

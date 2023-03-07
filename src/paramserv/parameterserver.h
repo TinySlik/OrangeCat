@@ -46,10 +46,11 @@ class CLASS_DECLSPEC ParameterServer : public std::enable_shared_from_this<Param
   configuru::Config &getCfgStatusRoot();
   configuru::Config &getCfgRoot();
   configuru::Config &getCfgCtrlRoot();
-  static ParameterServer *instance();
   inline bool isDebug() {return debug_;}
   void init();
-  std::shared_ptr<ParameterServer> create(const std::string &port);
+
+  static ParameterServer *instance();
+  static std::shared_ptr<ParameterServer> create(const std::string &port);
 };
 
 #endif // PARAMETERSERVER_H
