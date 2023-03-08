@@ -15,7 +15,6 @@ add_library(${PROJECT_NAME}  SHARED
                         parameterserver.cpp
                         urldecode.h
                         urldecode.cpp
-                        simplethread.h
                         configuru.hpp
                         windllsupport.h
                         )

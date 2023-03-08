@@ -142,35 +142,6 @@ int instance_or_mutil = 0;
 *exp ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-configuru::Config &ParameterServer::getCfgStatusRoot() {
-  return _cfgRoot.judge_with_create_key("dev_status");
-}
-configuru::Config &ParameterServer::getCfgRoot() {
-  return _cfgRoot;
-}
-configuru::Config &ParameterServer::getCfgCtrlRoot() {
-  return _cfgRoot.judge_with_create_key("dev_ctrl");
-}
-ParameterServer *ParameterServer::instance() {
-  
-  if (instance_or_mutil == 0) {
-    instance_or_mutil = 1;
-  } else if (instance_or_mutil == 1) {
-    //
-  } else {
-    LOG(ERROR) << "instance_or_mutil error.";
-    return nullptr;
-  }
-
-  static ParameterServer *_this = nullptr;
-  if (_this == nullptr) {
-    _this = new ParameterServer;
-    _this->init();
-    _this->startServer();
-  }
-  return _this;
-}
-
 static void handle_get_device_usage(struct mg_connection *nc) {
   // Use chunked encoding in order to avoid calculating Content-Length
   mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
@@ -361,20 +332,41 @@ typedef enum {
     STOP
 } ThreadState;
 
-class ServerThread : public Runnable {
-private:
-  std::mutex mmutex;
-  Condition *condition;
-  ThreadState requestedState=INIT;
-  ThreadState currentState=INIT;
-  int id;
+class ParameterServerImp {
   struct mg_mgr mgr;
   struct mg_connection *nc;
   cs_stat_t st;
-public:
-  ServerThread(int id) {
-    this->id=id;
-    condition=new Condition(mmutex);
+  ParameterServerImp() :
+  _index(0)
+  {
+    #ifdef WITH_HTTP_PAGE
+    debug_ = true;
+#else
+    debug_ = false;
+#endif
+  }
+  ~ParameterServerImp(){}
+  ThreadState requestedState=INIT;
+  ThreadState currentState=INIT;
+
+  configuru::Config _cfgRoot;
+  configuru::Config _null;
+  size_t _index;
+  bool debug_;
+  void startServer();
+  void stopServer();
+  
+  std::thread m_serverThread;
+  bool isDebug() {
+    return debug_;
+  }
+
+  friend ParameterServer;
+};
+
+void ParameterServerImp::startServer() {
+  m_serverThread = std::thread([this]() {
+    currentState=RUNNING;
 #ifdef WITH_HTTP_PAGE
     mg_mgr_init(&mgr, NULL);
     nc = mg_bind(&mgr, s_http_port, ev_handler);
@@ -383,7 +375,7 @@ public:
       LOG(WARNING) << "Cannot bind to " << s_http_port << std::endl;
       s_http_port[3]--;
       LOG(WARNING) << "Try " << s_http_port << std::endl;
-      nc = mg_bind(&mgr, s_http_port, ev_handler);
+      nc = mg_bind(&(mgr), s_http_port, ev_handler);
     }
     if (s_http_port[3] == '0') {
 #ifdef DEBUG_PARAM_SERV
@@ -391,30 +383,7 @@ public:
 #endif
       exit(1);
     }
-#endif
-  }
-  ~ServerThread() {
-    delete condition;
-  }
-  int getId() {
-    return id;
-  }
-  void setState(ThreadState nState) {
-    Synchronized x(mmutex);
-    requestedState=nState;
-    condition->notifyAll(x);
-  };
-  ThreadState getState() {
-    Synchronized x(mmutex);
-    return currentState;
-  };
 
-  virtual void run() {
-    {
-      Synchronized x(mmutex);
-      currentState=RUNNING;
-    }
-#ifdef WITH_HTTP_PAGE
     mg_set_protocol_http_websocket(nc);
     s_http_server_opts.document_root = TARGET_WEB_DIR_NAME;
     s_http_server_opts.enable_directory_listing = "yes";
@@ -459,50 +428,66 @@ public:
     mg_mgr_free(&mgr);
     return;
 #endif
+  });
+}
+
+void ParameterServerImp::stopServer() {
+  requestedState=STOP;
+  currentState=STOP;
+  m_serverThread.join();
+}
+
+bool ParameterServer::isDebug() {
+  return m_imp->isDebug();
+}
+
+configuru::Config &ParameterServer::getCfgStatusRoot() {
+  return m_imp->_cfgRoot.judge_with_create_key("dev_status");
+}
+configuru::Config &ParameterServer::getCfgRoot() {
+  return m_imp->_cfgRoot;
+}
+configuru::Config &ParameterServer::getCfgCtrlRoot() {
+  return m_imp->_cfgRoot.judge_with_create_key("dev_ctrl");
+}
+ParameterServer *ParameterServer::instance() {
+  
+  if (instance_or_mutil == 0) {
+    instance_or_mutil = 1;
+  } else if (instance_or_mutil == 1) {
+    //
+  } else {
+    LOG(ERROR) << "instance_or_mutil error.";
+    return nullptr;
   }
 
-  virtual void stop() {
-    requestedState=STOP;
-    currentState=STOP;
+  static ParameterServer *_this = nullptr;
+  if (_this == nullptr) {
+    _this = new ParameterServer;
+    _this->init();
+    _this->m_imp->startServer();
   }
-};
-
+  return _this;
+}
 
 ParameterServer::ParameterServer() :
-m_ServerThreadContext(nullptr),
-m_ServerThread(nullptr),
-_index(0) {
+m_imp(new ParameterServerImp()) {
   el::Configurations defaultConf;
   defaultConf.setToDefault();
   defaultConf.setGlobally(el::ConfigurationType::ToFile, "true");
   defaultConf.setGlobally(el::ConfigurationType::Filename, "param_server.log");
   el::Loggers::reconfigureLogger("default", defaultConf);
-
-  m_ServerThreadContext = std::make_shared<ServerThread>(0);
-  m_ServerThread = std::make_shared<Thread>(m_ServerThreadContext);
-#ifdef WITH_HTTP_PAGE
-  debug_ = true;
-#else
-  debug_ = false;
-#endif
 }
 
 ParameterServer::~ParameterServer() {
-  stopServer();
-}
-
-void ParameterServer::stopServer() {
-  m_ServerThreadContext->stop();
+  m_imp->stopServer();
   ncs.clear();
   free(pixels);
-}
-
-void ParameterServer::startServer() {
-  m_ServerThread->start();
+  delete m_imp;
 }
 
 void ParameterServer::init() {
-  _cfgRoot = Config::object();
+  m_imp->_cfgRoot = Config::object();
 }
 
 ParameterServer::ParameterServer(const std::string &port) {
