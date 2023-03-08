@@ -17,7 +17,6 @@
 #define PARAMETERSERVER_H
 
 #include "configuru.hpp"
-#include "simplethread.h"
 #include <mutex>
 #include <utility>
 #include <thread>
@@ -28,18 +27,13 @@
 #include "windllsupport.h"
 #include <mutex>
 #include <memory>
+#include <thread>
 #define MAX_ROOT_NODE_COUNT (256)
+class ParameterServerImp;
 
 class CLASS_DECLSPEC ParameterServer : public std::enable_shared_from_this<ParameterServer> {
   explicit ParameterServer();
-  std::shared_ptr<Runnable> m_ServerThreadContext;
-  std::shared_ptr<Thread> m_ServerThread;
-  configuru::Config _cfgRoot;
-  configuru::Config _null;
-  size_t _index;
-  void startServer();
-  void stopServer();
-  bool debug_;
+  ParameterServerImp *m_imp;
 
  public:
   ParameterServer(const std::string &port);
@@ -47,7 +41,7 @@ class CLASS_DECLSPEC ParameterServer : public std::enable_shared_from_this<Param
   configuru::Config &getCfgStatusRoot();
   configuru::Config &getCfgRoot();
   configuru::Config &getCfgCtrlRoot();
-  inline bool isDebug() {return debug_;}
+  bool isDebug();
   void init();
 
   static ParameterServer *instance();
