@@ -32,13 +32,16 @@
       scene.add( cube );
 
       camera.position.z = 5;
-
+      let tag = false;
       let image = document.getElementById("Camera");
       image.src = camData;
       image.style.display = 'none';
-      image.addEventListener( 'load', function ( event ) { 
-        material.map = new THREE.TextureLoader().load(camData);
-        material.needsUpdate = true;
+      image.addEventListener( 'load', function ( event ) {
+        texture = new THREE.TextureLoader().load(camData, function(tex){
+          material.map = tex;
+          material.needsUpdate = true;
+          renderer.render(scene, camera);
+        });
       });
 
       $("#get_data").click(function(){
@@ -59,8 +62,8 @@
           var received_msg = evt.data;
           blobToDataURI(received_msg, function (result) {
             camData = result;
-            texture = new THREE.TextureLoader().load(result);
-            texture.needsUpdate = true;
+            // texture = new THREE.TextureLoader().load(result);
+            // texture.needsUpdate = true;
             image.src = result;
           })
         };
@@ -79,12 +82,11 @@
           callback(e.target.result.replace("data:application/octet-stream", "data:image/bmp"));
         }
       }
-      function animate() {
-        texture.needsUpdate = true;
-        requestAnimationFrame( animate );
 
+      function animate() {
+        requestAnimationFrame( animate );
         cube.rotation.x += 0.01;
-        cube.rotation.y += 0.01
+        cube.rotation.y += 0.01;
         renderer.render( scene, camera );
       }
 
