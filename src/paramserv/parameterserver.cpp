@@ -42,7 +42,7 @@
 #define TARGET_WEB_DIR_NAME "../res/web_root"
 #define CONFIGURU_JSON_PARSE_ERROR_LOG ""
 #define CACHE_MAX_SIZE (128*1024)
-#define STATUS_DISPLAY_TIME_INTERVAL 100
+#define STATUS_DISPLAY_TIME_INTERVAL 10
 #define DEBUG_PARAM_SERV
 #define CONFIG_HIDEN_PARAM
 #define WITH_HTTP_PAGE
@@ -364,6 +364,21 @@ class ParameterServerImp {
   friend ParameterServer;
 };
 
+void ddd() {
+  int l=(200*3+3)/4*4;
+  int bmi[]= {
+            l*200+54,0,54,40,200,200,1|3*8<<16,0,l*200,0,0,100,0};
+  char data_test[54 + l*200];
+  char* ct = data_test;
+  char* bmi_c = (char *)bmi;
+  ct[0] = 'B';
+  ct[1] = 'M';
+  ct+=2;
+  strncpy(ct,bmi_c,52);
+  ct+=52;
+  for(int i=0; i<200*200*3; i++)ct[i]=rand()%256;
+}
+
 void ParameterServerImp::startServer() {
   m_serverThread = std::thread([this]() {
     currentState=RUNNING;
@@ -402,12 +417,14 @@ void ParameterServerImp::startServer() {
     LOG(INFO) << "Starting web server on port " << s_http_port << std::endl;
 #endif
     std::ifstream read_file;
+    
     read_file.open("../res/dig10k_penguin.bmp");
     // std::vector<char> data_(1024 * 1024 * 10);
     // char *p = data_.data();
     // memset(data_.data(), 0, data_.size());
     long sz = 0;
     std::string content = "";
+    
     if (read_file.is_open()) {
       // char c;
      std::string tmp;
@@ -418,10 +435,76 @@ void ParameterServerImp::startServer() {
       sz = content.size();
       LOG(INFO) << "test data file size:" << sz;
     }
+
+    // std::ifstream read_file2;
+    // read_file2.open("../re3/dig10k_penguin.bmp");
     
+    // long sz2 = 0;
+    // std::string content2 = "";
+
+    // if (read_file2.is_open()) {
+    //   // char c;
+    //  std::string tmp;
+    //   while (getline(read_file2, tmp)) {
+    //     content2 += tmp;
+    //   }
+    //   read_file2.close();
+    //   sz2 = content2.size();
+    //   LOG(INFO) << "test data file size 2:" << sz2;
+    // }
+
+    // int l=(200*3+3)/4*4;
+    // int bmi[]= {
+    //           l*200+54,0,54,40,200,200,1|3*8<<16,0,l*200,0,0,100,0};
+    // char data_test[54 + l*200];
+    // char* ct = data_test;
+    // char* bmi_c = (char *)bmi;
+    // ct[0] = 'B';
+    // ct[1] = 'M';
+    // ct+=2;
+    // strncpy(ct,bmi_c,52);
+    // ct+=52;
+    // for(int i=0; i<200*200*3; i++)ct[i]=rand()%256;
+    // long sz = sz;
+    char data[260118] = {
+    66,
+    77,
+    22,-8,3,0,
+    0,0,0,0,
+    54,0,0,0,
+    40,0,0,0,
+    31,1,0,0,
+    45,1,0,0,
+    1,0,24,0,
+    0,0,0,0,
+    -32,-9,3,0,
+    18,11,0,0,
+    18,11,0,0,
+    0,0,0,0,
+    0,0,0,0};
+
     const char * ctmp = content.data();
+    for (int i = 0; i < 54; i++) {
+      std::cout << (int)(ctmp[i]) << ',';
+    }
+    std::cout << std::endl;
+    char *lk = (char *)ctmp;
+    char x = 100;
     while (requestedState!=STOP) {
-      if (sz > 0) broadcast(ctmp, sz);
+      if (sz > 0) {
+        static long tg = 0;
+        tg ++;
+        if (sz > 0) {
+          if (tg % 200 == 0) {
+            x = rand()%256;
+            int res = x;
+            if (res < 0) res = (256 + res);
+            LOG(INFO) << res;
+          }
+          for(int i=54; i<sz; i++)lk[i]=x;
+          broadcast(ctmp, sz);
+        }
+      }
       mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
     }
     currentState=STOP;
