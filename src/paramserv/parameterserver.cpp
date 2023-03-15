@@ -436,53 +436,6 @@ void ParameterServerImp::startServer() {
       LOG(INFO) << "test data file size:" << sz;
     }
 
-    // std::ifstream read_file2;
-    // read_file2.open("../re3/dig10k_penguin.bmp");
-    
-    // long sz2 = 0;
-    // std::string content2 = "";
-
-    // if (read_file2.is_open()) {
-    //   // char c;
-    //  std::string tmp;
-    //   while (getline(read_file2, tmp)) {
-    //     content2 += tmp;
-    //   }
-    //   read_file2.close();
-    //   sz2 = content2.size();
-    //   LOG(INFO) << "test data file size 2:" << sz2;
-    // }
-
-    // int l=(200*3+3)/4*4;
-    // int bmi[]= {
-    //           l*200+54,0,54,40,200,200,1|3*8<<16,0,l*200,0,0,100,0};
-    // char data_test[54 + l*200];
-    // char* ct = data_test;
-    // char* bmi_c = (char *)bmi;
-    // ct[0] = 'B';
-    // ct[1] = 'M';
-    // ct+=2;
-    // strncpy(ct,bmi_c,52);
-    // ct+=52;
-    // for(int i=0; i<200*200*3; i++)ct[i]=rand()%256;
-    // long sz = sz;
-    char data[260118] = {
-    66,
-    77,
-    22,-8,3,0,
-    0,0,0,0,
-    54,0,0,0,
-    40,0,0,0,
-    31,1,0,0,
-    45,1,0,0,
-    1,0,24,0,
-    0,0,0,0,
-    -32,-9,3,0,
-    18,11,0,0,
-    18,11,0,0,
-    0,0,0,0,
-    0,0,0,0};
-
     const char * ctmp = content.data();
     for (int i = 0; i < 54; i++) {
       std::cout << (int)(ctmp[i]) << ',';
