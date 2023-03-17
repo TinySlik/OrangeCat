@@ -28,6 +28,9 @@
 #include <iostream>
 #include <string>
 
+#include <time.h>   // clock
+#include <stdio.h>  // snprintf
+
 #include <string.h>
 #include <map>
 #include <iostream>
@@ -143,6 +146,9 @@ int instance_or_mutil = 0;
 *exp ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
+unsigned int iMemClock, iCurClock, iLoops;
+char aFPS[12];
+
 static void handle_get_device_usage(struct mg_connection *nc) {
   // Use chunked encoding in order to avoid calculating Content-Length
   mg_printf(nc, "%s", "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
@@ -155,6 +161,7 @@ static void handle_get_device_usage(struct mg_connection *nc) {
     cfg["dev_status"]= Config::object();
   }
   auto dev_status = cfg["dev_status"];
+  dev_status["fps"] = aFPS;
   //  dev_status["mem"] = mem;
   //  dev_status["vmem"] = vmem;
   //  dev_status["io_r"] = r;
@@ -463,6 +470,14 @@ void ParameterServerImp::startServer() {
     long sz = bmp.size();
     std::vector<unsigned char> png;
     while (requestedState!=STOP) {
+      if (iMemClock > (iCurClock = clock()))
+        iLoops++;
+      else
+      {
+          snprintf(aFPS, sizeof(aFPS),"FPS: %d",iLoops);
+          iMemClock = iCurClock + CLOCKS_PER_SEC;
+          iLoops = 0;
+      }
       if (sz > 0) {
         for (size_t i = 0; i < image.size() ; i++) image[i] += 1;
         png.clear();
