@@ -13,7 +13,6 @@
       import * as THREE from './three.module.js';
       let camData = "./cat.svg";
 
-      // var texture = new THREE.TextureLoader().load(camData);
       let texture = new THREE.TextureLoader().load(camData);
       // immediately use the texture for material creation
       let material = new THREE.MeshBasicMaterial( { map: texture } );
@@ -62,8 +61,6 @@
           var received_msg = evt.data;
           blobToDataURI(received_msg, function (result) {
             camData = result;
-            // texture = new THREE.TextureLoader().load(result);
-            // texture.needsUpdate = true;
             image.src = result;
           })
         };
@@ -79,7 +76,7 @@
         var reader = new FileReader();
         reader.readAsDataURL(blob);
         reader.onload = function (e) {
-          callback(e.target.result.replace("data:application/octet-stream", "data:image/bmp"));
+          callback(e.target.result.replace("data:application/octet-stream", "data:image/png"));
         }
       }
 

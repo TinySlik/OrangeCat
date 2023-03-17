@@ -24,6 +24,7 @@
 #include <iostream>
 #include <string>
 #include "easylogging++.h"
+#include "lodepng.h"
 #include <iostream>
 #include <string>
 
@@ -364,19 +365,57 @@ class ParameterServerImp {
   friend ParameterServer;
 };
 
-void ddd() {
-  int l=(200*3+3)/4*4;
-  int bmi[]= {
-            l*200+54,0,54,40,200,200,1|3*8<<16,0,l*200,0,0,100,0};
-  char data_test[54 + l*200];
-  char* ct = data_test;
-  char* bmi_c = (char *)bmi;
-  ct[0] = 'B';
-  ct[1] = 'M';
-  ct+=2;
-  strncpy(ct,bmi_c,52);
-  ct+=52;
-  for(int i=0; i<200*200*3; i++)ct[i]=rand()%256;
+//returns 0 if all went ok, non-0 if error
+//output image is always given in RGBA (with alpha channel), even if it's a BMP without alpha channel
+unsigned decodeBMP(std::vector<unsigned char>& image, unsigned& w, unsigned& h, const std::vector<unsigned char>& bmp) {
+  static const unsigned MINHEADER = 54; //minimum BMP header size
+
+  if(bmp.size() < MINHEADER) return -1;
+  if(bmp[0] != 'B' || bmp[1] != 'M') return 1; //It's not a BMP file if it doesn't start with marker 'BM'
+  unsigned pixeloffset = bmp[10] + 256 * bmp[11]; //where the pixel data starts
+  //read width and height from BMP header
+  w = bmp[18] + bmp[19] * 256;
+  h = bmp[22] + bmp[23] * 256;
+  //read number of channels from BMP header
+  if(bmp[28] != 24 && bmp[28] != 32) return 2; //only 24-bit and 32-bit BMPs are supported.
+  unsigned numChannels = bmp[28] / 8;
+
+  //The amount of scanline bytes is width of image times channels, with extra bytes added if needed
+  //to make it a multiple of 4 bytes.
+  unsigned scanlineBytes = w * numChannels;
+  if(scanlineBytes % 4 != 0) scanlineBytes = (scanlineBytes / 4) * 4 + 4;
+
+  unsigned dataSize = scanlineBytes * h;
+  if(bmp.size() < dataSize + pixeloffset) return 3; //BMP file too small to contain all pixels
+
+  image.resize(w * h * 4);
+
+  /*
+  There are 3 differences between BMP and the raw image buffer for LodePNG:
+  -it's upside down
+  -it's in BGR instead of RGB format (or BRGA instead of RGBA)
+  -each scanline has padding bytes to make it a multiple of 4 if needed
+  The 2D for loop below does all these 3 conversions at once.
+  */
+  for(unsigned y = 0; y < h; y++)
+  for(unsigned x = 0; x < w; x++) {
+    //pixel start byte position in the BMP
+    unsigned bmpos = pixeloffset + (h - y - 1) * scanlineBytes + numChannels * x;
+    //pixel start byte position in the new raw image
+    unsigned newpos = 4 * y * w + 4 * x;
+    if(numChannels == 3) {
+      image[newpos + 0] = bmp[bmpos + 2]; //R
+      image[newpos + 1] = bmp[bmpos + 1]; //G
+      image[newpos + 2] = bmp[bmpos + 0]; //B
+      image[newpos + 3] = 255;            //A
+    } else {
+      image[newpos + 0] = bmp[bmpos + 2]; //R
+      image[newpos + 1] = bmp[bmpos + 1]; //G
+      image[newpos + 2] = bmp[bmpos + 0]; //B
+      image[newpos + 3] = bmp[bmpos + 3]; //A
+    }
+  }
+  return 0;
 }
 
 void ParameterServerImp::startServer() {
@@ -416,47 +455,19 @@ void ParameterServerImp::startServer() {
 #ifdef DEBUG_PARAM_SERV
     LOG(INFO) << "Starting web server on port " << s_http_port << std::endl;
 #endif
-    std::ifstream read_file;
-    
-    read_file.open("../res/dig10k_penguin.bmp");
-    // std::vector<char> data_(1024 * 1024 * 10);
-    // char *p = data_.data();
-    // memset(data_.data(), 0, data_.size());
-    long sz = 0;
-    std::string content = "";
-    
-    if (read_file.is_open()) {
-      // char c;
-     std::string tmp;
-      while (getline(read_file, tmp)) {
-        content += tmp;
-      }
-      read_file.close();
-      sz = content.size();
-      LOG(INFO) << "test data file size:" << sz;
-    }
-
-    const char * ctmp = content.data();
-    for (int i = 0; i < 54; i++) {
-      std::cout << (int)(ctmp[i]) << ',';
-    }
-    std::cout << std::endl;
-    char *lk = (char *)ctmp;
-    char x = 100;
+    std::vector<unsigned char> bmp;
+    lodepng::load_file(bmp, "../res/dig10k_penguin.bmp");
+    std::vector<unsigned char> image;
+    unsigned w = 200, h = 200;
+    decodeBMP(image, w, h, bmp);
+    long sz = bmp.size();
+    std::vector<unsigned char> png;
     while (requestedState!=STOP) {
       if (sz > 0) {
-        static long tg = 0;
-        tg ++;
-        if (sz > 0) {
-          if (tg % 200 == 0) {
-            x = rand()%256;
-            int res = x;
-            if (res < 0) res = (256 + res);
-            LOG(INFO) << res;
-          }
-          for(int i=54; i<sz; i++)lk[i]=x;
-          broadcast(ctmp, sz);
-        }
+        for (size_t i = 0; i < image.size() ; i++) image[i] += 1;
+        png.clear();
+        lodepng::encode(png, image, w, h);
+        broadcast((const char *)png.data(), sz);
       }
       mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
     }
