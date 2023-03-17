@@ -13,4 +13,6 @@ mkdir build && cd build && cmake ..
 
 make
 
+../_output/bin/paramserv_example
+
 just enjoy.
