@@ -470,20 +470,23 @@ void ParameterServerImp::startServer() {
     long sz = bmp.size();
     std::vector<unsigned char> png;
     while (requestedState!=STOP) {
-      if (iMemClock > (iCurClock = clock()))
+      if (ncs.size() > 0) {
+        if (iMemClock > (iCurClock = clock()))
         iLoops++;
-      else
-      {
-          snprintf(aFPS, sizeof(aFPS),"FPS: %d",iLoops);
-          iMemClock = iCurClock + CLOCKS_PER_SEC;
-          iLoops = 0;
+        else
+        {
+            snprintf(aFPS, sizeof(aFPS),"FPS: %d",iLoops);
+            iMemClock = iCurClock + CLOCKS_PER_SEC;
+            iLoops = 0;
+        }
+        if (sz > 0) {
+          for (size_t i = 0; i < image.size() ; i++) image[i] += 1;
+          png.clear();
+          lodepng::encode(png, image, w, h);
+          broadcast((const char *)png.data(), sz);
+        }
       }
-      if (sz > 0) {
-        for (size_t i = 0; i < image.size() ; i++) image[i] += 1;
-        png.clear();
-        lodepng::encode(png, image, w, h);
-        broadcast((const char *)png.data(), sz);
-      }
+      
       mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
     }
     currentState=STOP;
