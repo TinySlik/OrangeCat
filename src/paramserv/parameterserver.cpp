@@ -431,7 +431,7 @@ void ParameterServerImp::startServer() {
 #ifdef WITH_HTTP_PAGE
     mg_mgr_init(&mgr, NULL);
     nc = mg_bind(&mgr, s_http_port, ev_handler);
-    mg_set_protocol_http_websocket(nc);
+    
     while (nc == NULL && s_http_port[3] != '0') {
       LOG(WARNING) << "Cannot bind to " << s_http_port << std::endl;
       s_http_port[3]--;
