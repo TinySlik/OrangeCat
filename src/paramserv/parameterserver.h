@@ -17,7 +17,6 @@
 #define PARAMETERSERVER_H
 
 #include "configuru.hpp"
-#include <mutex>
 #include <utility>
 #include <thread>
 #include <chrono>
@@ -25,7 +24,6 @@
 #include <atomic>
 #include <iostream>
 #include "windllsupport.h"
-#include <mutex>
 #include <memory>
 #include <thread>
 #define MAX_ROOT_NODE_COUNT (256)
@@ -41,6 +39,7 @@ class CLASS_DECLSPEC ParameterServer : public std::enable_shared_from_this<Param
   configuru::Config &getCfgStatusRoot();
   configuru::Config &getCfgRoot();
   configuru::Config &getCfgCtrlRoot();
+  int sampleImgData(std::shared_ptr<std::vector<unsigned char>> data);
   bool isDebug();
   void init();
 

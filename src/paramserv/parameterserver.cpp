@@ -27,6 +27,7 @@
 #include "lodepng.h"
 #include <iostream>
 #include <string>
+#include <mutex>
 
 #include <time.h>   // clock
 #include <stdio.h>  // snprintf
@@ -345,9 +346,10 @@ class ParameterServerImp {
   struct mg_connection *nc;
   cs_stat_t st;
   ParameterServerImp() :
-  _index(0),
-  http_serv_on_(false) {
-#ifdef WITH_HTTP_PAGE
+  _index(0), 
+  m_image(nullptr)
+  {
+    #ifdef WITH_HTTP_PAGE
     debug_ = true;
 #else
     debug_ = false;
@@ -356,14 +358,17 @@ class ParameterServerImp {
   ~ParameterServerImp(){}
   ThreadState requestedState=INIT;
   ThreadState currentState=INIT;
-
+  
+  std::shared_ptr<std::vector<unsigned char>> m_image;
   configuru::Config _cfgRoot;
   configuru::Config _null;
+  unsigned w, h;
+  std::mutex data_lock_;
   size_t _index;
   bool debug_;
-  bool http_serv_on_;
   void startServer();
   void stopServer();
+  int sampleImgData(std::shared_ptr<std::vector<unsigned char>> data);
   
   std::thread m_serverThread;
   bool isDebug() {
@@ -372,6 +377,20 @@ class ParameterServerImp {
 
   friend ParameterServer;
 };
+
+int ParameterServerImp::sampleImgData(std::shared_ptr<std::vector<unsigned char>> data) {
+  data_lock_.lock();
+  auto sz = data->size();
+  // w = (*data)[sz - 1];
+  // h = (*data)[sz - 2];
+  short *hw_ptr = (short *)(data->data() + sz - 4);
+  w = hw_ptr[0];
+  h = hw_ptr[1];
+  m_image = data;
+  // LOG(INFO) << w << "||" << h;
+  data_lock_.unlock();
+  return 0;
+}
 
 //returns 0 if all went ok, non-0 if error
 //output image is always given in RGBA (with alpha channel), even if it's a BMP without alpha channel
@@ -464,12 +483,15 @@ void ParameterServerImp::startServer() {
 #ifdef DEBUG_PARAM_SERV
     LOG(INFO) << "Starting web server on port " << s_http_port << std::endl;
 #endif
-    std::vector<unsigned char> image;
-    unsigned w = 500, h = 500;
-    image.resize(w*h*4);
+    data_lock_.lock();
+    if (!m_image) {
+      w = 500;
+      h = 500;
+      m_image = std::make_shared<std::vector<unsigned char>>(w * h * 4);
+    }
     std::vector<unsigned char> png;
-    lodepng::encode(png, image, w, h);
-    http_serv_on_ = true;
+    lodepng::encode(png, *m_image, w, h);
+    data_lock_.unlock();
     while (requestedState!=STOP) {
       if (ncs.size() > 1) {
         if (iMemClock > (iCurClock = clock()))
@@ -479,16 +501,17 @@ void ParameterServerImp::startServer() {
           iMemClock = iCurClock + CLOCKS_PER_SEC;
           iLoops = 0;
         }
-        for (size_t i = 0; i < image.size() ; i++) image[i] += 1;
+        // for (size_t i = 0; i < image.size() ; i++) image[i] += 1;
+        // data_lock_.lock();
         png.clear();
-        lodepng::encode(png, image, w, h);
+        lodepng::encode(png, *m_image, w, h);
+        // data_lock_.unlock();
         broadcast((const char *)png.data(), png.size());
       }
       
       mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
     }
-    http_serv_on_ = false;
-    currentState = STOP;
+    currentState=STOP;
     mg_mgr_free(&mgr);
     return;
 #endif
@@ -568,4 +591,8 @@ std::shared_ptr<ParameterServer> ParameterServer::create(const std::string &port
   }
   LOG(INFO) << port;
   return std::make_shared<ParameterServer>(port);
+}
+
+int ParameterServer::sampleImgData(std::shared_ptr<std::vector<unsigned char>> data) {
+  return m_imp->sampleImgData(data);
 }
