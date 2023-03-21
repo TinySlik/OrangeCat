@@ -383,6 +383,7 @@ unsigned decodeBMP(std::vector<unsigned char>& image, unsigned& w, unsigned& h, 
   //read width and height from BMP header
   w = bmp[18] + bmp[19] * 256;
   h = bmp[22] + bmp[23] * 256;
+  LOG(INFO) << w << "||" << h;
   //read number of channels from BMP header
   if(bmp[28] != 24 && bmp[28] != 32) return 2; //only 24-bit and 32-bit BMPs are supported.
   unsigned numChannels = bmp[28] / 8;
@@ -462,29 +463,25 @@ void ParameterServerImp::startServer() {
 #ifdef DEBUG_PARAM_SERV
     LOG(INFO) << "Starting web server on port " << s_http_port << std::endl;
 #endif
-    std::vector<unsigned char> bmp;
-    lodepng::load_file(bmp, "../res/dig10k_penguin.bmp");
     std::vector<unsigned char> image;
-    unsigned w = 200, h = 200;
-    decodeBMP(image, w, h, bmp);
-    long sz = bmp.size();
+    unsigned w = 500, h = 500;
+    image.resize(w*h*4);
     std::vector<unsigned char> png;
+    lodepng::encode(png, image, w, h);
+    
     while (requestedState!=STOP) {
-      if (ncs.size() > 0) {
+      if (ncs.size() > 1) {
         if (iMemClock > (iCurClock = clock()))
-        iLoops++;
-        else
-        {
-            snprintf(aFPS, sizeof(aFPS),"FPS: %d",iLoops);
-            iMemClock = iCurClock + CLOCKS_PER_SEC;
-            iLoops = 0;
+          iLoops++;
+        else {
+          snprintf(aFPS, sizeof(aFPS),"FPS: %d",iLoops);
+          iMemClock = iCurClock + CLOCKS_PER_SEC;
+          iLoops = 0;
         }
-        if (sz > 0) {
-          for (size_t i = 0; i < image.size() ; i++) image[i] += 1;
-          png.clear();
-          lodepng::encode(png, image, w, h);
-          broadcast((const char *)png.data(), sz);
-        }
+        for (size_t i = 0; i < image.size() ; i++) image[i] += 1;
+        png.clear();
+        lodepng::encode(png, image, w, h);
+        broadcast((const char *)png.data(), png.size());
       }
       
       mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
@@ -516,7 +513,6 @@ configuru::Config &ParameterServer::getCfgCtrlRoot() {
   return m_imp->_cfgRoot.judge_with_create_key("dev_ctrl");
 }
 ParameterServer *ParameterServer::instance() {
-  
   if (instance_or_mutil == 0) {
     instance_or_mutil = 1;
   } else if (instance_or_mutil == 1) {

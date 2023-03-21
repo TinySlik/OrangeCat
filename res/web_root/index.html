@@ -35,12 +35,12 @@
       let image = document.getElementById("Camera");
       image.src = camData;
       image.style.display = 'none';
-      let num = 0;
+      // let num = 0;
       image.addEventListener( 'load', function ( event ) {
         texture = new THREE.TextureLoader().load(camData, function(tex){
           material.map = tex;
           material.needsUpdate = true;
-          console.log(num++);
+          // console.log(num++);
           renderer.render(scene, camera);
         });
       });
