@@ -345,9 +345,9 @@ class ParameterServerImp {
   struct mg_connection *nc;
   cs_stat_t st;
   ParameterServerImp() :
-  _index(0)
-  {
-    #ifdef WITH_HTTP_PAGE
+  _index(0),
+  http_serv_on_(false) {
+#ifdef WITH_HTTP_PAGE
     debug_ = true;
 #else
     debug_ = false;
@@ -361,6 +361,7 @@ class ParameterServerImp {
   configuru::Config _null;
   size_t _index;
   bool debug_;
+  bool http_serv_on_;
   void startServer();
   void stopServer();
   
@@ -468,7 +469,7 @@ void ParameterServerImp::startServer() {
     image.resize(w*h*4);
     std::vector<unsigned char> png;
     lodepng::encode(png, image, w, h);
-    
+    http_serv_on_ = true;
     while (requestedState!=STOP) {
       if (ncs.size() > 1) {
         if (iMemClock > (iCurClock = clock()))
@@ -486,7 +487,8 @@ void ParameterServerImp::startServer() {
       
       mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
     }
-    currentState=STOP;
+    http_serv_on_ = false;
+    currentState = STOP;
     mg_mgr_free(&mgr);
     return;
 #endif
