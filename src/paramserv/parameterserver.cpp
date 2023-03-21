@@ -347,7 +347,8 @@ class ParameterServerImp {
   cs_stat_t st;
   ParameterServerImp() :
   _index(0), 
-  m_image(nullptr)
+  m_image(nullptr),
+  data_type('\0')
   {
     #ifdef WITH_HTTP_PAGE
     debug_ = true;
@@ -366,6 +367,7 @@ class ParameterServerImp {
   std::mutex data_lock_;
   size_t _index;
   bool debug_;
+  char data_type;
   void startServer();
   void stopServer();
   int sampleImgData(std::shared_ptr<std::vector<unsigned char>> data);
@@ -380,14 +382,15 @@ class ParameterServerImp {
 
 int ParameterServerImp::sampleImgData(std::shared_ptr<std::vector<unsigned char>> data) {
   data_lock_.lock();
-  auto sz = data->size();
+  auto sz = data -> size();
   // w = (*data)[sz - 1];
   // h = (*data)[sz - 2];
-  short *hw_ptr = (short *)(data->data() + sz - 4);
+  data_type = (*data)[sz - 1];
+  short *hw_ptr = (short *)(data->data() + sz - 5);
   w = hw_ptr[0];
   h = hw_ptr[1];
   m_image = data;
-  // LOG(INFO) << w << "||" << h;
+  LOG(INFO) << data_type << "||"<< w << "||" << h;
   data_lock_.unlock();
   return 0;
 }

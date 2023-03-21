@@ -66,9 +66,10 @@ int main(int, char**) {
   std::this_thread::sleep_for(std::chrono::seconds(1));
   std::cout << "Press Enter to exit." << std::endl;
   thr_tag_ = true;
-  auto thr = std::thread([]() {
-    auto data = std::make_shared<std::vector<unsigned char>>(500 * 500 * 4 + 4);
+  auto thr = std::thread([]() { 
+        auto data = std::make_shared<std::vector<unsigned char>>(500 * 500 * 4 + 5);
     short *hw_ptr = (short *)(data->data() + 500 * 500 * 4);
+    (*data)[500 * 500 * 4 + 4] = 'c';
     hw_ptr[0] = 500;
     hw_ptr[1] = 500;
     memset(data->data(), 100, 500 * 500 * 4);
