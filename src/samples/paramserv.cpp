@@ -7,7 +7,7 @@ int main(int, char**) {
   auto cfg = ParameterServer::instance()->getCfgCtrlRoot();
   cfg["status"] = "ok";
   cfg["lucky"] = "yes";
-  cfg += {{"example", {
+  cfg["example"]= {
       {"lineThickness", 1},
       {"compute1_switch", 3},
       {"test_switch", 4},
@@ -57,8 +57,7 @@ int main(int, char**) {
           }
         }
       }}
-    }}
-  };
+    };
 
   auto status = ParameterServer::instance()->getCfgStatusRoot();
   status["custom"] = "something";
