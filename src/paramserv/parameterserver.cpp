@@ -297,6 +297,16 @@ static void broadcast(const char *buf, size_t len,const char &tag) {
   }
 }
 
+static void broadcast(std::shared_ptr<std::vector<unsigned char>> data) {
+  if (data && (*data)[data->size() - 1] == 'j') {
+    //
+  } else {
+    // for (size_t i = 1; i < ncs.size(); i++) {
+    //   mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, buf, len);
+    // }
+  }
+}
+
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
   struct http_message *hm = (struct http_message *) ev_data;
   switch (ev) {
@@ -470,7 +480,6 @@ void ParameterServerImp::startServer() {
         // data_lock_.unlock();
         broadcast((const char *)m_png.data(), m_png.size(), (*m_image)[m_image->size() - 1]);
       }
-      
       mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
     }
     http_tag_ = false;

@@ -10,6 +10,7 @@
     <meta name="theme-color" content="#000000">
     <title>Parameter Server</title>
     <script type="module">
+      let connect_tag_ = false;
       import * as THREE from './three.module.js';
       let camData = "./cat.svg";
 
@@ -45,14 +46,12 @@
         });
       });
 
-      $("#get_data").click(function(){
-        connecteClient();
-      })
+      let ws_lt;
 
       function connecteClient() {
         // 打开一个 web socket
         var ws = new WebSocket("ws://" + window.location.host);
-
+        ws_lt = ws;
         // 连接建立后的回调函数
         ws.onopen = function () {
           console.log("WebSocket 连接成功");
@@ -70,9 +69,23 @@
         // 连接关闭后的回调函数
         ws.onclose = function () {
           // 关闭 websocket
-          alert("连接已关闭..." + "ws://" + window.location.host);
+          // alert("连接已关闭..." + "ws://" + window.location.host);
+          console.log("连接已关闭..." + "ws://" + window.location.host);
         };
       }
+      
+      $("#get_data").click(function(){
+        let btn = document.getElementById("get_data");
+        if (connect_tag_ == false) {
+          btn.innerHTML = "关闭传输";
+          connect_tag_ = true;
+          connecteClient();
+        } else {
+          connect_tag_ = false;
+          btn.innerHTML = "开始传输";
+          ws_lt.close();
+        }
+      })
 
       function blobToDataURI(blob, callback) {
         var reader = new FileReader();
@@ -188,7 +201,7 @@
       <fieldset>
         <legend>Cam Data</legend>
         <div>
-          <button id="get_data">获取数据</button>
+          <button id="get_data">开始传输</button>
         </div>
         <br>
         <div id="data_show">
