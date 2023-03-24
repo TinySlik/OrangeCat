@@ -159,7 +159,7 @@ static void handle_get_device_usage(struct mg_connection *nc) {
   if (cfg.has_key("dev_status") &&
     cfg["dev_status"].is_object()) {
   } else {
-    cfg["dev_status"]= Config::object();
+    cfg["dev_status"] = Config::object();
   }
   auto dev_status = cfg["dev_status"];
   dev_status["fps"] = aFPS;
@@ -281,29 +281,52 @@ static void broadcast(struct mg_connection *nc, const struct mg_str msg) {
   }
 }
 
+/*
 static void broadcast(const char *buf, size_t len) {
   for (size_t i = 1; i < ncs.size(); i++) {
     mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, buf, len);
   }
 }
-
-static void broadcast(const char *buf, size_t len,const char &tag) {
-  if (tag == 'j') {
-    //
-  } else {
-    for (size_t i = 1; i < ncs.size(); i++) {
-      mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, buf, len);
-    }
-  }
-}
+*/
 
 static void broadcast(std::shared_ptr<std::vector<unsigned char>> data) {
-  if (data && (*data)[data->size() - 1] == 'j') {
-    //
+  int w = 500, h = 500;
+  char mode = 'e';
+  if (!data) {
+    // ex:
+    data = std::make_shared<std::vector<unsigned char>>(500 * 500 * 4);
+    std::vector<unsigned char> png;
+    lodepng::encode(png, *data, w, h);
+    for (size_t i = 1; i < ncs.size(); i++) {
+      mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, (const char *)png.data(), png.size());
+    }
+    return;
   } else {
-    // for (size_t i = 1; i < ncs.size(); i++) {
-    //   mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, buf, len);
-    // }
+    mode = (*data)[data->size() - 1];
+  }
+  
+  switch (mode) {
+    case 'c':
+    case 'd':
+    {
+      std::vector<unsigned char> png;
+      // data_lock_.lock();
+      lodepng::encode(png, *data, w, h);
+      // data_lock_.unlock();
+      short *hw_ptr = (short *)(data->data() + data->size() - 5);
+      w = hw_ptr[0];
+      h = hw_ptr[1];
+      lodepng::encode(png, *data, w, h);
+
+      for (size_t i = 1; i < ncs.size(); i++) {
+        mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, (const char *)png.data(), png.size());
+      }
+    }
+    break;
+    case 'j':
+    break;
+    default:
+    break;
   }
 }
 
@@ -384,7 +407,6 @@ class ParameterServerImp {
   std::vector<unsigned char> m_png;
   configuru::Config _cfgRoot;
   configuru::Config _null;
-  unsigned w, h;
   std::mutex data_lock_;
   size_t _index;
   bool debug_;
@@ -408,13 +430,7 @@ class ParameterServerImp {
 int ParameterServerImp::sampleImgData(std::shared_ptr<std::vector<unsigned char>> data) {
   if (!http_tag_) return -1;
   data_lock_.lock();
-  auto sz = data -> size();
-  data_type = (*data)[sz - 1];
-  short *hw_ptr = (short *)(data->data() + sz - 5);
-  w = hw_ptr[0];
-  h = hw_ptr[1];
   m_image = data;
-  // LOG(INFO) << data_type << "||"<< w << "||" << h;
   data_lock_.unlock();
   return 0;
 }
@@ -456,13 +472,7 @@ void ParameterServerImp::startServer() {
 #ifdef DEBUG_PARAM_SERV
     LOG(INFO) << "Starting web server on port " << s_http_port << std::endl;
 #endif
-    data_lock_.lock();
-    if (!m_image) {
-      w = 500;
-      h = 500;
-      m_image = std::make_shared<std::vector<unsigned char>>(w * h * 4);
-    }
-    data_lock_.unlock();
+    
     http_tag_ = true;
     while (requestedState!=STOP) {
       if (ncs.size() > 1) {
@@ -473,12 +483,8 @@ void ParameterServerImp::startServer() {
           iMemClock = iCurClock + CLOCKS_PER_SEC;
           iLoops = 0;
         }
-        // for (size_t i = 0; i < image.size() ; i++) image[i] += 1;
-        // data_lock_.lock();
-        m_png.clear();
-        lodepng::encode(m_png, *m_image, w, h);
-        // data_lock_.unlock();
-        broadcast((const char *)m_png.data(), m_png.size(), (*m_image)[m_image->size() - 1]);
+
+        broadcast(m_image);
       }
       mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
     }
