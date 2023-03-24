@@ -42,6 +42,7 @@ class CLASS_DECLSPEC ParameterServer : public std::enable_shared_from_this<Param
   int sampleImgData(std::shared_ptr<std::vector<unsigned char>> data);
   bool isDebug();
   void init();
+  bool isHttpActive();
 
   static ParameterServer *instance();
   static std::shared_ptr<ParameterServer> create(const std::string &port);

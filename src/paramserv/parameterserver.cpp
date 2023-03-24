@@ -282,9 +282,18 @@ static void broadcast(struct mg_connection *nc, const struct mg_str msg) {
 }
 
 static void broadcast(const char *buf, size_t len) {
-   /* Local echo. */
   for (size_t i = 1; i < ncs.size(); i++) {
     mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, buf, len);
+  }
+}
+
+static void broadcast(const char *buf, size_t len,const char &tag) {
+  if (tag == 'j') {
+    //
+  } else {
+    for (size_t i = 1; i < ncs.size(); i++) {
+      mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, buf, len);
+    }
   }
 }
 
@@ -346,8 +355,9 @@ class ParameterServerImp {
   struct mg_connection *nc;
   cs_stat_t st;
   ParameterServerImp() :
-  _index(0), 
   m_image(nullptr),
+  _index(0), 
+  http_tag_(false),
   data_type('\0')
   {
     #ifdef WITH_HTTP_PAGE
@@ -361,12 +371,14 @@ class ParameterServerImp {
   ThreadState currentState=INIT;
   
   std::shared_ptr<std::vector<unsigned char>> m_image;
+  std::vector<unsigned char> m_png;
   configuru::Config _cfgRoot;
   configuru::Config _null;
   unsigned w, h;
   std::mutex data_lock_;
   size_t _index;
   bool debug_;
+  bool http_tag_;
   char data_type;
   void startServer();
   void stopServer();
@@ -376,76 +388,24 @@ class ParameterServerImp {
   bool isDebug() {
     return debug_;
   }
+  bool isHttpActive() {
+    return http_tag_;
+  }
 
   friend ParameterServer;
 };
 
 int ParameterServerImp::sampleImgData(std::shared_ptr<std::vector<unsigned char>> data) {
+  if (!http_tag_) return -1;
   data_lock_.lock();
   auto sz = data -> size();
-  // w = (*data)[sz - 1];
-  // h = (*data)[sz - 2];
   data_type = (*data)[sz - 1];
   short *hw_ptr = (short *)(data->data() + sz - 5);
   w = hw_ptr[0];
   h = hw_ptr[1];
   m_image = data;
-  LOG(INFO) << data_type << "||"<< w << "||" << h;
+  // LOG(INFO) << data_type << "||"<< w << "||" << h;
   data_lock_.unlock();
-  return 0;
-}
-
-//returns 0 if all went ok, non-0 if error
-//output image is always given in RGBA (with alpha channel), even if it's a BMP without alpha channel
-unsigned decodeBMP(std::vector<unsigned char>& image, unsigned& w, unsigned& h, const std::vector<unsigned char>& bmp) {
-  static const unsigned MINHEADER = 54; //minimum BMP header size
-
-  if(bmp.size() < MINHEADER) return -1;
-  if(bmp[0] != 'B' || bmp[1] != 'M') return 1; //It's not a BMP file if it doesn't start with marker 'BM'
-  unsigned pixeloffset = bmp[10] + 256 * bmp[11]; //where the pixel data starts
-  //read width and height from BMP header
-  w = bmp[18] + bmp[19] * 256;
-  h = bmp[22] + bmp[23] * 256;
-  LOG(INFO) << w << "||" << h;
-  //read number of channels from BMP header
-  if(bmp[28] != 24 && bmp[28] != 32) return 2; //only 24-bit and 32-bit BMPs are supported.
-  unsigned numChannels = bmp[28] / 8;
-
-  //The amount of scanline bytes is width of image times channels, with extra bytes added if needed
-  //to make it a multiple of 4 bytes.
-  unsigned scanlineBytes = w * numChannels;
-  if(scanlineBytes % 4 != 0) scanlineBytes = (scanlineBytes / 4) * 4 + 4;
-
-  unsigned dataSize = scanlineBytes * h;
-  if(bmp.size() < dataSize + pixeloffset) return 3; //BMP file too small to contain all pixels
-
-  image.resize(w * h * 4);
-
-  /*
-  There are 3 differences between BMP and the raw image buffer for LodePNG:
-  -it's upside down
-  -it's in BGR instead of RGB format (or BRGA instead of RGBA)
-  -each scanline has padding bytes to make it a multiple of 4 if needed
-  The 2D for loop below does all these 3 conversions at once.
-  */
-  for(unsigned y = 0; y < h; y++)
-  for(unsigned x = 0; x < w; x++) {
-    //pixel start byte position in the BMP
-    unsigned bmpos = pixeloffset + (h - y - 1) * scanlineBytes + numChannels * x;
-    //pixel start byte position in the new raw image
-    unsigned newpos = 4 * y * w + 4 * x;
-    if(numChannels == 3) {
-      image[newpos + 0] = bmp[bmpos + 2]; //R
-      image[newpos + 1] = bmp[bmpos + 1]; //G
-      image[newpos + 2] = bmp[bmpos + 0]; //B
-      image[newpos + 3] = 255;            //A
-    } else {
-      image[newpos + 0] = bmp[bmpos + 2]; //R
-      image[newpos + 1] = bmp[bmpos + 1]; //G
-      image[newpos + 2] = bmp[bmpos + 0]; //B
-      image[newpos + 3] = bmp[bmpos + 3]; //A
-    }
-  }
   return 0;
 }
 
@@ -492,9 +452,8 @@ void ParameterServerImp::startServer() {
       h = 500;
       m_image = std::make_shared<std::vector<unsigned char>>(w * h * 4);
     }
-    std::vector<unsigned char> png;
-    lodepng::encode(png, *m_image, w, h);
     data_lock_.unlock();
+    http_tag_ = true;
     while (requestedState!=STOP) {
       if (ncs.size() > 1) {
         if (iMemClock > (iCurClock = clock()))
@@ -506,14 +465,15 @@ void ParameterServerImp::startServer() {
         }
         // for (size_t i = 0; i < image.size() ; i++) image[i] += 1;
         // data_lock_.lock();
-        png.clear();
-        lodepng::encode(png, *m_image, w, h);
+        m_png.clear();
+        lodepng::encode(m_png, *m_image, w, h);
         // data_lock_.unlock();
-        broadcast((const char *)png.data(), png.size());
+        broadcast((const char *)m_png.data(), m_png.size(), (*m_image)[m_image->size() - 1]);
       }
       
       mg_mgr_poll(&mgr, STATUS_DISPLAY_TIME_INTERVAL);
     }
+    http_tag_ = false;
     currentState=STOP;
     mg_mgr_free(&mgr);
     return;
@@ -594,6 +554,10 @@ std::shared_ptr<ParameterServer> ParameterServer::create(const std::string &port
   }
   LOG(INFO) << port;
   return std::make_shared<ParameterServer>(port);
+}
+
+bool ParameterServer::isHttpActive() {
+  return m_imp->isHttpActive();
 }
 
 int ParameterServer::sampleImgData(std::shared_ptr<std::vector<unsigned char>> data) {

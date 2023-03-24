@@ -67,7 +67,7 @@ int main(int, char**) {
   std::cout << "Press Enter to exit." << std::endl;
   thr_tag_ = true;
   auto thr = std::thread([]() { 
-        auto data = std::make_shared<std::vector<unsigned char>>(500 * 500 * 4 + 5);
+    auto data = std::make_shared<std::vector<unsigned char>>(500 * 500 * 4 + 5);
     short *hw_ptr = (short *)(data->data() + 500 * 500 * 4);
     (*data)[500 * 500 * 4 + 4] = 'c';
     hw_ptr[0] = 500;
