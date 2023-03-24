@@ -310,13 +310,12 @@ static void broadcast(std::shared_ptr<std::vector<unsigned char>> data) {
     case 'd':
     {
       std::vector<unsigned char> png;
-      // data_lock_.lock();
-      lodepng::encode(png, *data, w, h);
-      // data_lock_.unlock();
       short *hw_ptr = (short *)(data->data() + data->size() - 5);
       w = hw_ptr[0];
       h = hw_ptr[1];
+      // data_lock_.lock();
       lodepng::encode(png, *data, w, h);
+      // data_lock_.unlock();
 
       for (size_t i = 1; i < ncs.size(); i++) {
         mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, (const char *)png.data(), png.size());
