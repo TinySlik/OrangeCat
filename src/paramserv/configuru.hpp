@@ -1896,25 +1896,25 @@ namespace configuru
 	  const float EPSINON = 0.000001;
 	  bool result = true;
 	  if (a._type != b._type) {
-	    if ((a._type == Int && b._type == Float) ||
-		(a._type == Float && b._type == Int)) {
-	      if (a._type == Int) {
-		Config tmp = a;
-		tmp._type = Int;
-		tmp._u.i = (float)a._u.i;
-		bool tmp_res= deep_async(tmp, b);
-		if (tmp_res) {
-		  a = b;
-		}
-		result *= tmp_res;
+      if ((a._type == Int && b._type == Float) ||
+        (a._type == Float && b._type == Int)) {
+        if (a._type == Int) {
+          Config tmp = a;
+          tmp._type = Int;
+          tmp._u.i = (float)a._u.i;
+          bool tmp_res= deep_async(tmp, b);
+          if (tmp_res) {
+            a = b;
+          }
+          result *= tmp_res;
 	      } else {
-		if (((a._u.f >= -EPSINON) && (a._u.f <= EPSINON)) && b == 0) {
-		} else {
-		  Config tmp = b;
-		  tmp._type = Float;
-		  tmp._u.f = (float)b._u.i;
-		  result *= deep_async(a, tmp);
-		}
+          if (((a._u.f >= -EPSINON) && (a._u.f <= EPSINON)) && b == 0) {
+          } else {
+            Config tmp = b;
+            tmp._type = Float;
+            tmp._u.f = (float)b._u.i;
+            result *= deep_async(a, tmp);
+          }
 	      }
 	    } else {
 	      return false;
@@ -1922,25 +1922,25 @@ namespace configuru
 	  } else if (a._type == Null)   {
 	    return false;
 	  } else if (a._type == Bool)   {
-	   if (a._u.b  != b._u.b) {
-	     bool pass = true;
-	     for (size_t i = 0; i < a.func_array.size(); ++i) {
-		pass *= a.func_array[i](a, b);
-	     }
-	     if (pass) {
-	       result = false;
-	       a._u.b = b._u.b;
-	     }
-	   }
+      if (a._u.b  != b._u.b) {
+        bool pass = true;
+        for (size_t i = 0; i < a.func_array.size(); ++i) {
+          pass *= a.func_array[i](a, b);
+        }
+        if (pass) {
+          result = false;
+          a._u.b = b._u.b;
+        }
+      }
 	  } else if (a._type == Int)    {
 	    if (a._u.i != b._u.i) {
 	      bool pass = true;
 	      for (size_t i = 0; i < a.func_array.size(); ++i) {
-		 pass *= a.func_array[i](a, b);
+		      pass *= a.func_array[i](a, b);
 	      }
 	      if (pass) {
-		result = false;
-		a._u.i = b._u.i;
+          result = false;
+          a._u.i = b._u.i;
 	      }
 	    }
 	  } else if (a._type == Float) {
@@ -1948,61 +1948,61 @@ namespace configuru
 		((b._u.f >= -EPSINON) && (b._u.f <= EPSINON))) {
 	    } else {
 	      if (abs(a._u.f - b._u.f) > 1e-6) {
-		bool pass = true;
-		for (size_t i = 0; i < a.func_array.size(); ++i) {
-		   pass *= a.func_array[i](a, b);
-		}
-		if (pass) {
-		  result = false;
-		  a._u.f = b._u.f;
-		}
+          bool pass = true;
+          for (size_t i = 0; i < a.func_array.size(); ++i) {
+            pass *= a.func_array[i](a, b);
+          }
+          if (pass) {
+            result = false;
+            a._u.f = b._u.f;
+          }
 	      }
 	    }
 	  } else if (a._type == String) {
 	    if (*a._u.str != *b._u.str) {
 	      bool pass = true;
 	      for (size_t i = 0; i < a.func_array.size(); ++i) {
-		 pass *= a.func_array[i](a, b);
+		      pass *= a.func_array[i](a, b);
 	      }
 	      if (pass) {
-		result = false;
-		a = b;
+          result = false;
+          a = b;
 	      }
 	    }
 	  } else if (a._type == Object) {
 	    if (!deep_eq(a, b)) {
 	      bool pass = bool(a.func_array.size());
 	      for (size_t i = 0; i < a.func_array.size(); ++i) {
-		 pass *= a.func_array[i](a, b);
+		      pass *= a.func_array[i](a, b);
 	      }
 	      if (pass) {
-		result = false;
-		a = b;
+          result = false;
+          a = b;
 	      } else {
-		auto&& a_object = a.as_object()._impl;
-		auto&& b_object = b.as_object()._impl;
-		for (auto&& p: a_object) {
-		  auto it = b_object.find(p.first);
-		  if (it == b_object.end()) continue;
-		  result *= deep_async(p.second._value, it->second._value);
-		}
+          auto&& a_object = a.as_object()._impl;
+          auto&& b_object = b.as_object()._impl;
+          for (auto&& p: a_object) {
+            auto it = b_object.find(p.first);
+            if (it == b_object.end()) continue;
+            result *= deep_async(p.second._value, it->second._value);
+          }
 	      }
 	    }
 	  } else if (a._type == Array) {
 	    if (!deep_eq(a, b)) {
 	      bool pass = bool(a.func_array.size());
 	      for (size_t i = 0; i < a.func_array.size(); ++i) {
-		 pass *= a.func_array[i](a, b);
+		      pass *= a.func_array[i](a, b);
 	      }
 	      if (pass) {
-		result = false;
-		a = b;
+          result = false;
+          a = b;
 	      } else {
-		auto&& a_array = a.as_array();
-		auto&& b_array = b.as_array();
-		for (size_t i=0; i<a_array.size(); ++i) {
-		  result *= deep_async(a_array[i], a_array[i]);
-		}
+          auto&& a_array = a.as_array();
+          auto&& b_array = b.as_array();
+          for (size_t i=0; i<a_array.size(); ++i) {
+            result *= deep_async(a_array[i], a_array[i]);
+          }
 	      }
 	    }
 	  }

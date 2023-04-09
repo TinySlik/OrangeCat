@@ -9,45 +9,198 @@
     <script type="text/javascript" src="jsoneditor.min.js"></script>
     <meta name="theme-color" content="#000000">
     <title>Parameter Server</title>
+    <script id="vs" type="x-shader/x-vertex">
+			uniform sampler2D map;
+			uniform float width;
+			uniform float height;
+			uniform float nearClipping, farClipping;
+
+			uniform float pointSize;
+			uniform float zOffset;
+
+			varying vec2 vUv;
+
+			const float XtoZ = 1.11146; // tan( 1.0144686 / 2.0 ) * 2.0;
+			const float YtoZ = 0.83359; // tan( 0.7898090 / 2.0 ) * 2.0;
+
+			void main() {
+				vUv = vec2( position.x / width, position.y / height );
+				vec4 color = texture2D( map, vUv );
+				float depth = (color.g + color.b * 256.f ) * 500.f;
+        // float z  = ( 1.0 - depth ) * (farClipping - nearClipping) + nearClipping;
+        // float z = depth;
+				vec4 pos = vec4(
+					( position.x / width - 0.5 ) * depth * XtoZ,
+					( position.y / height - 0.5 ) * depth * YtoZ,
+					- depth,
+					1.0);
+
+				gl_PointSize = pointSize;
+				gl_Position = projectionMatrix * modelViewMatrix * pos;
+			}
+		</script>
+
+    <script id="fs" type="x-shader/x-fragment">
+			uniform sampler2D map;
+			varying vec2 vUv;
+			void main() {
+				vec4 color = texture2D( map, vUv );
+        vec4 color_res;
+        // float dep_o =  color.g * 256.f + color.b * 256.f * 256.f;
+        // float depth = dep_o * 256.f / 1000.f;
+        float depth = (color.g + color.b * 256.f) * 16.f;
+        float f = 256.0f - mod(depth, 255.f);
+        // float tg = (color.g + color.b * 256.f) * 4.0f;
+        // float f = color.g * 256.f;
+
+        if (0.f <= f && f < 64.f) {
+          color_res.r = 0.f;
+          color_res.g = 254.f-4.f*f;
+          color_res.b = 255.f;
+        } else if (64.f <= f && f < 128.f) {
+          color_res.r = 0.f;
+          color_res.g = 4.f*f-254.f;
+          color_res.b = 510.f-4.f*f;
+        } else if (128.f <= f && f < 192.f) {
+          color_res.r = 4.f*f-510.f;
+          color_res.g = 255.f;
+          color_res.b = 0.f;
+        } else if(192.f <= f && f <= 255.f) {
+          color_res.r = 255.f;
+          color_res.g = 1022.f-4.f*f;
+          color_res.b = 0.f;
+        }
+
+				gl_FragColor = vec4( color_res.r / 255.f, color_res.g / 255.f, color_res.b / 255.f, 0.5f );
+				// gl_FragColor = vec4( 1.0f, 1.0f, 1.0f, 0.5f );
+      }
+		</script>
+
     <script type="module">
       let connect_tag_ = false;
       import * as THREE from './three.module.js';
-      let camData = "./cat.svg";
+      let camData = "./logo.svg";
 
-      let texture = new THREE.TextureLoader().load(camData);
-      // immediately use the texture for material creation
-      let material = new THREE.MeshBasicMaterial( { map: texture } );
-
-      let scene = new THREE.Scene();
-      let camera = new THREE.PerspectiveCamera( 75, 
-      830 / 500, 
-      0.1, 1000 );
-
-      const renderer = new THREE.WebGLRenderer();
-      renderer.setSize( 830, 500 );
-      document.getElementById("data_show").appendChild(renderer.domElement);
-      const geometry = new THREE.BoxGeometry( 2.5, 2.5, 2.5 );
-      // const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-      let cube = new THREE.Mesh( geometry, material );
-      scene.add( cube );
-
-      camera.position.z = 5;
-      let tag = false;
+      let texture, material, scene, camera;
+      let mouse, center;
+      let renderer ,geometry, mesh;
       let image = document.getElementById("Camera");
-      image.src = camData;
-      image.style.display = 'none';
-      // let num = 0;
-      image.addEventListener( 'load', function ( event ) {
-        texture = new THREE.TextureLoader().load(camData, function(tex){
-          material.map = tex;
-          material.needsUpdate = true;
-          // console.log(num++);
-          renderer.render(scene, camera);
+
+      function init() {
+        // center = new THREE.Vector3();
+				// center.z = 0;
+
+        // texture = new THREE.TextureLoader().load(camData);
+        // // immediately use the texture for material creation
+        // material = new THREE.MeshBasicMaterial( { map: texture } );
+
+        // scene = new THREE.Scene();
+        // camera = new THREE.PerspectiveCamera( 75, 
+        // 830 / 500, 
+        // 0.1, 1000 );
+
+        // renderer = new THREE.WebGLRenderer();
+        // renderer.setSize( 830, 500 );
+        // document.getElementById("data_show").appendChild(renderer.domElement);
+        // geometry = new THREE.BoxGeometry( 2.5, 2.5, 2.5 );
+        // // const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+        // mesh = new THREE.Mesh( geometry, material );
+        // scene.add( mesh );
+
+        // camera.position.z = 5;
+        // image = document.getElementById("Camera");
+        // image.src = camData;
+        // image.style.display = 'none';
+        // // let num = 0;
+        // image.addEventListener( 'load', function ( event ) {
+        //   texture = new THREE.TextureLoader().load(camData, function(tex){
+        //     material.map = tex;
+        //     material.needsUpdate = true;
+        //     // console.log(num++);
+        //     renderer.render(scene, camera);
+        //   });
+        // });
+
+        // mouse = new THREE.Vector3( 0, 0, 1 );
+
+				// document.addEventListener( 'mousemove', onDocumentMouseMove );
+        
+        texture = new THREE.TextureLoader().load(camData);
+        texture.magFilter = THREE.NearestFilter;
+        // immediately use the texture for material creation
+        scene = new THREE.Scene();
+        
+        const width = 640, height = 400;
+        // window.innerWidth / window.innerHeight
+        camera = new THREE.PerspectiveCamera( 50, width / height , 1, 10000 );
+				camera.position.set( 0, 0, 800 );
+
+        renderer = new THREE.WebGLRenderer();
+        renderer.setSize( 830, 500 );
+        document.getElementById("data_show").appendChild(renderer.domElement);
+
+        center = new THREE.Vector3();
+				center.z =  0;
+        
+        const nearClipping = 0, farClipping = 1000;
+        // geometry = new THREE.BoxGeometry( 200.5, 200.5, 200.5 );
+
+        geometry = new THREE.BufferGeometry();
+        const vertices = new Float32Array( width * height * 3 );
+        for ( let i = 0, j = 0, l = vertices.length; i < l; i += 3, j ++ ) {
+          vertices[ i ] = j % width;
+					vertices[ i + 1 ] = Math.floor( j / width );
+        }
+
+        geometry.setAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+
+        material = new THREE.ShaderMaterial( {
+        uniforms: {
+          'map': { value: texture },
+          'width': { value: width },
+          'height': { value: height },
+          'nearClipping': { value: nearClipping },
+          'farClipping': { value: farClipping },
+
+          'pointSize': { value: 2 },
+          'zOffset': { value: 1000 }
+        },
+        vertexShader: document.getElementById( 'vs' ).textContent,
+        fragmentShader: document.getElementById( 'fs' ).textContent,
+        blending: THREE.AdditiveBlending,
+        depthTest: false, depthWrite: false,
+        transparent: true
+        } );
+
+        mesh = new THREE.Points( geometry, material );
+        // mesh = new THREE.Mesh( geometry, material );
+        scene.add( mesh );
+
+        // camera.position.z = 5;
+        image.src = camData;
+
+        mouse = new THREE.Vector3( 0, 0, 1 );
+
+				document.addEventListener( 'mousemove', onDocumentMouseMove );
+        // image.style.display = 'none';
+        renderer.setSize(0, 0);
+        image.addEventListener( 'load', function ( event ) {
+          texture = new THREE.TextureLoader().load(camData, function(tex) {
+            tex.magFilter = THREE.NearestFilter;
+            // material.map = tex;
+            material.uniforms[ 'map' ].value = tex;
+            material.needsUpdate = true;
+            renderer.render(scene, camera);
+          });
         });
-      });
+      }
+
+      function onDocumentMouseMove( event ) {
+        mouse.x = ( event.clientX - window.innerWidth / 2 ) * 8;
+        mouse.y = ( event.clientY - window.innerHeight / 2 ) * 8;
+      }
 
       let ws_lt;
-
       function connecteClient() {
         // 打开一个 web socket
         var ws = new WebSocket("ws://" + window.location.host);
@@ -89,26 +242,56 @@
 
       function blobToDataURI(blob, callback) {
         var reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onload = function (e) {
-          callback(e.target.result.replace("data:application/octet-stream", "data:image/png"));
+        if (typeof(blob) == "string") {
+          let loc = blob.indexOf("data format change: ");
+          if (loc != -1) {
+            console.log(blob[20]);
+            if (blob[20] == 'p') {
+              image.style.display = 'none';
+              renderer.setSize( 830, 500 );
+            } else if (blob[20] == 'c') {
+              image.style.display = 'block';
+              renderer.setSize(0, 0);
+            } else if (blob[20] == 'j') {
+              image.style.display = 'block';
+              renderer.setSize(0, 0);
+            } else {
+              image.style.display = 'none';
+              renderer.setSize(0, 0);
+            }
+          }
+        } else if (typeof(blob) == "object") {
+          reader.readAsDataURL(blob);
+          reader.onload = function (e) {
+            if (e.target.result.includes("data:application/octet-stream"))
+              callback(e.target.result.replace("data:application/octet-stream", "data:image/png"));
+            // callback(e.target.result);
+          }
+        } else {
+          console.log("error");
         }
       }
 
       function animate() {
         requestAnimationFrame( animate );
-        cube.rotation.x += 0.01;
-        cube.rotation.y += 0.01;
+        // mesh.rotation.x += 0.01;
+        // mesh.rotation.y += 0.01;
+        // renderer.render( scene, camera );
+
+        camera.position.x = ( mouse.x - camera.position.x ) * 0.6;
+				camera.position.y = ( - mouse.y - camera.position.y ) * 0.6;
+				camera.lookAt( center );
+
         renderer.render( scene, camera );
       }
-
+      init();
       animate();
     </script>
   </head>
   <body>
     <div class="content">
-      <img src="cat.svg" style="float:right; height: 70px; border-radius: 2px;">
-      <h1>Orange Cat Parameter Server</h1>
+      <img src="logo.svg" style="float:right; height: 70px; border-radius: 2px;">
+      <h1>Grand Vision</h1>
       <fieldset>
         <legend>Device settings</legend>
         <div>
@@ -187,7 +370,7 @@
                     json_dev_ctrl = json_in;
                 },
                 complete: function(a, status) {
-                  console.log(status);
+                  // console.log(status);
                   if (status == "success") {
                     // todo
                   } else {
@@ -201,7 +384,7 @@
       <fieldset>
         <legend>Cam Data</legend>
         <div>
-          <button id="get_data">开始传输</button>
+          <button id="get_data">获取数据</button>
         </div>
         <br>
         <div id="data_show">

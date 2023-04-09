@@ -56,6 +56,10 @@ INITIALIZE_EASYLOGGINGPP
 #include "configuru.hpp"
 using namespace configuru;
 static char s_http_port[] = "8099";
+#if MG_ENABLE_SSL
+static const char *s_ssl_cert = "../res/server.pem";
+static const char *s_ssl_key = "../res/server.key";
+#endif
 static struct mg_serve_http_opts s_http_server_opts;
 static char cache[CACHE_MAX_SIZE];
 bool _thread_stop = false;
@@ -281,19 +285,78 @@ static void broadcast(struct mg_connection *nc, const struct mg_str msg) {
   }
 }
 
-/*
 static void broadcast(const char *buf, size_t len) {
   for (size_t i = 1; i < ncs.size(); i++) {
-    mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, buf, len);
+    mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_TEXT, buf, len);
   }
 }
-*/
+
+//Input image must be RGB buffer (3 bytes per pixel), but you can easily make it
+//support RGBA input and output by changing the inputChannels and/or outputChannels
+//in the function to 4.
+void encodeBMP(std::vector<unsigned char>& bmp, const unsigned char* image, int w, int h) {
+  //3 bytes per pixel used for both input and output.
+  int inputChannels = 3;
+  int outputChannels = 3;
+
+  //bytes 0-13
+  bmp.push_back('B'); bmp.push_back('M'); //0: bfType
+  bmp.push_back(0); bmp.push_back(0); bmp.push_back(0); bmp.push_back(0); //2: bfSize; size not yet known for now, filled in later.
+  bmp.push_back(0); bmp.push_back(0); //6: bfReserved1
+  bmp.push_back(0); bmp.push_back(0); //8: bfReserved2
+  bmp.push_back(54 % 256); bmp.push_back(54 / 256); bmp.push_back(0); bmp.push_back(0); //10: bfOffBits (54 header bytes)
+
+  //bytes 14-53
+  bmp.push_back(40); bmp.push_back(0); bmp.push_back(0); bmp.push_back(0);  //14: biSize
+  bmp.push_back(w % 256); bmp.push_back(w / 256); bmp.push_back(0); bmp.push_back(0); //18: biWidth
+  bmp.push_back(h % 256); bmp.push_back(h / 256); bmp.push_back(0); bmp.push_back(0); //22: biHeight
+  bmp.push_back(1); bmp.push_back(0); //26: biPlanes
+  bmp.push_back(outputChannels * 8); bmp.push_back(0); //28: biBitCount
+  bmp.push_back(0); bmp.push_back(0); bmp.push_back(0); bmp.push_back(0);  //30: biCompression
+  bmp.push_back(0); bmp.push_back(0); bmp.push_back(0); bmp.push_back(0);  //34: biSizeImage
+  bmp.push_back(0); bmp.push_back(0); bmp.push_back(0); bmp.push_back(0);  //38: biXPelsPerMeter
+  bmp.push_back(0); bmp.push_back(0); bmp.push_back(0); bmp.push_back(0);  //42: biYPelsPerMeter
+  bmp.push_back(0); bmp.push_back(0); bmp.push_back(0); bmp.push_back(0);  //46: biClrUsed
+  bmp.push_back(0); bmp.push_back(0); bmp.push_back(0); bmp.push_back(0);  //50: biClrImportant
+
+  /*
+  Convert the input RGBRGBRGB pixel buffer to the BMP pixel buffer format. There are 3 differences with the input buffer:
+  -BMP stores the rows inversed, from bottom to top
+  -BMP stores the color channels in BGR instead of RGB order
+  -BMP requires each row to have a multiple of 4 bytes, so sometimes padding bytes are added between rows
+  */
+
+  int imagerowbytes = outputChannels * w;
+  imagerowbytes = imagerowbytes % 4 == 0 ? imagerowbytes : imagerowbytes + (4 - imagerowbytes % 4); //must be multiple of 4
+
+  for(int y = h - 1; y >= 0; y--) { //the rows are stored inversed in bmp
+    int c = 0;
+    for(int x = 0; x < imagerowbytes; x++) {
+      if(x < w * outputChannels) {
+        int inc = c;
+        //Convert RGB(A) into BGR(A)
+        if(c == 0) inc = 2;
+        else if(c == 2) inc = 0;
+        bmp.push_back(image[inputChannels * (w * y + x / outputChannels) + inc]);
+      }
+      else bmp.push_back(0);
+      c++;
+      if(c >= outputChannels) c = 0;
+    }
+  }
+
+  // Fill in the size
+  bmp[2] = bmp.size() % 256;
+  bmp[3] = (bmp.size() / 256) % 256;
+  bmp[4] = (bmp.size() / 65536) % 256;
+  bmp[5] = bmp.size() / 16777216;
+}
 
 static void broadcast(std::shared_ptr<std::vector<unsigned char>> data) {
   int w = 500, h = 500;
-  char mode = 'e';
+  static char mode = 'e';
   if (!data) {
-    // ex:
+    // ex::
     data = std::make_shared<std::vector<unsigned char>>(500 * 500 * 4);
     std::vector<unsigned char> png;
     lodepng::encode(png, *data, w, h);
@@ -302,12 +365,45 @@ static void broadcast(std::shared_ptr<std::vector<unsigned char>> data) {
     }
     return;
   } else {
-    mode = (*data)[data->size() - 1];
+    if (mode != (*data)[data->size() - 1]) {
+      mode = (*data)[data->size() - 1];
+      std::string lo = "data format change: ";
+      lo += mode; 
+      broadcast(lo.c_str(), lo.size());
+      LOG(INFO) << lo;
+    }
   }
-  
   switch (mode) {
     case 'c':
+    {
+      std::vector<unsigned char> png;
+      short *hw_ptr = (short *)(data->data() + data->size() - 5);
+      w = hw_ptr[0];
+      h = hw_ptr[1];
+      // data_lock_.lock();
+      lodepng::encode(png, *data, w, h);
+      // data_lock_.unlock();
+
+      for (size_t i = 1; i < ncs.size(); i++) {
+        mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, (const char *)png.data(), png.size());
+      }
+    }
+    break;
     case 'd':
+    {
+      std::vector<unsigned char> png;
+      short *hw_ptr = (short *)(data->data() + data->size() - 5);
+      w = hw_ptr[0];
+      h = hw_ptr[1];
+      std::vector<unsigned char> bmp;
+      encodeBMP(bmp, data->data(), w, h);
+
+      for (size_t i = 1; i < ncs.size(); i++) {
+        mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, (const char *)bmp.data(), bmp.size());
+      }
+    }
+    break;
+    case 'p':
     {
       std::vector<unsigned char> png;
       short *hw_ptr = (short *)(data->data() + data->size() - 5);
@@ -323,6 +419,10 @@ static void broadcast(std::shared_ptr<std::vector<unsigned char>> data) {
     }
     break;
     case 'j':
+    // LOG(INFO) << 'j';
+    for (size_t i = 1; i < ncs.size(); i++) {
+      mg_send_websocket_frame(ncs[i], WEBSOCKET_OP_BINARY, (const char *)data->data(), data->size() - 1);
+    }
     break;
     default:
     break;
@@ -332,6 +432,15 @@ static void broadcast(std::shared_ptr<std::vector<unsigned char>> data) {
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
   struct http_message *hm = (struct http_message *) ev_data;
   switch (ev) {
+    case MG_EV_ACCEPT: {
+      // struct mg_tls_opts opts = {
+      //     //.ca = "ca.pem",         // Uncomment to enable two-way SSL
+      //     .cert = "server.pem",     // Certificate PEM file
+      //     .certkey = "server.pem",  // This pem contains both cert and key
+      // };
+      // mg_tls_init(c, &opts);
+      break;
+    }
     case MG_EV_WEBSOCKET_HANDSHAKE_DONE: {
       /* New websocket connection. Tell everybody. */
       ncs.push_back(nc);
@@ -439,13 +548,28 @@ void ParameterServerImp::startServer() {
     currentState=RUNNING;
 #ifdef WITH_HTTP_PAGE
     mg_mgr_init(&mgr, NULL);
-    nc = mg_bind(&mgr, s_http_port, ev_handler);
     
+#if MG_ENABLE_SSL
+struct mg_bind_opts bind_opts;
+    const char *err;
+    memset(&bind_opts, 0, sizeof(bind_opts));
+    bind_opts.ssl_cert = s_ssl_cert;
+    bind_opts.ssl_key = s_ssl_key;
+    bind_opts.error_string = &err;
+
+    nc = mg_bind_opt(&mgr, s_http_port, ev_handler, bind_opts);
+#else
+    nc = mg_bind(&mgr, s_http_port, ev_handler);
+#endif    
     while (nc == NULL && s_http_port[3] != '0') {
       LOG(WARNING) << "Cannot bind to " << s_http_port << std::endl;
       s_http_port[3]--;
       LOG(WARNING) << "Try " << s_http_port << std::endl;
+#if MG_ENABLE_SSL
+      nc = mg_bind_opt(&mgr, s_http_port, ev_handler, bind_opts);
+#else
       nc = mg_bind(&(mgr), s_http_port, ev_handler);
+#endif
     }
     if (s_http_port[3] == '0') {
 #ifdef DEBUG_PARAM_SERV
@@ -455,6 +579,9 @@ void ParameterServerImp::startServer() {
     }
 
     mg_set_protocol_http_websocket(nc);
+    char self_path[1024];
+    readlink("/proc/self/exe", self_path, 1024 );
+    std::string path = self_path;
     s_http_server_opts.document_root = TARGET_WEB_DIR_NAME;
     s_http_server_opts.enable_directory_listing = "yes";
 
@@ -535,11 +662,11 @@ ParameterServer *ParameterServer::instance() {
 
 ParameterServer::ParameterServer() :
 m_imp(new ParameterServerImp()) {
-  el::Configurations defaultConf;
-  defaultConf.setToDefault();
-  defaultConf.setGlobally(el::ConfigurationType::ToFile, "true");
-  defaultConf.setGlobally(el::ConfigurationType::Filename, "param_server.log");
-  el::Loggers::reconfigureLogger("default", defaultConf);
+  // el::Configurations defaultConf;
+  // defaultConf.setToDefault();
+  // defaultConf.setGlobally(el::ConfigurationType::ToFile, "true");
+  // defaultConf.setGlobally(el::ConfigurationType::Filename, "param_server.log");
+  // el::Loggers::reconfigureLogger("default", defaultConf);
 }
 
 ParameterServer::~ParameterServer() {

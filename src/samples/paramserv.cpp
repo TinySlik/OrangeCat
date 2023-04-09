@@ -6,7 +6,7 @@
 bool thr_tag_ = false;
 
 int main(int, char**) {
-  auto cfg = ParameterServer::instance()->getCfgCtrlRoot();
+    auto cfg = ParameterServer::instance()->getCfgCtrlRoot();
   cfg["status"] = "ok";
   cfg["lucky"] = "yes";
   cfg["example"]= {
